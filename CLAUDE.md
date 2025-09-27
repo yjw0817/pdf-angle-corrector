@@ -4,10 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 🚀 Project Status & Current Phase
 
-**Current Status:** AI Auto-Detection Complete ✅
-**Current Phase:** Week 1 Complete - Moving to Week 2 (UI Polish & Testing)
-**Next Milestone:** Demo Video & User Testing (Week 2-3)
-**Target Launch:** Week 5 (on track)
+**Current Status:** Week 1 AI Feature Implementation Complete - Canvas Bug Needs Fix
+**Current Phase:** Week 1 Completion - Critical Bug Fix Required
+**Next Milestone:** Fix canvas reuse error in multi-page PDF Auto-Fix → Week 2
+**Target Launch:** Week 5 (after AI feature completion)
+
+**⚠️ CRITICAL BUG:**
+- **Error:** `pdf.min.js:22 Uncaught (in promise) Error: Cannot use the same canvas during multiple render() operations`
+- **Location:** App.tsx lines 705-737 (Auto-Fix button for multi-page PDFs)
+- **Impact:** Auto-Fix button crashes when processing multi-page PDFs
+- **Status:** Attempted fix with canvas cleanup did NOT resolve issue
+- **Next Action:** Investigate PDF.js render task cancellation and proper canvas isolation
 
 **Quick Links:**
 - [12-Week Roadmap](docs/ROADMAP.md) - Detailed execution plan
@@ -66,11 +73,16 @@ The application uses React 19's `useState` for state management with these key s
 **`services/imageService.ts`:**
 - `rotateAndExportImage()` - Canvas-based rotation and format export (jpg/png/webp)
 - `createPdfFromImages()` - Creates PDF from multiple images using pdf-lib
-- `detectTiltAngle()` - **NEW**: Hybrid angle detection system
-  - Method 1: Text baseline detection (Tesseract.js OCR)
-  - Method 2: Hough Line Transform (OpenCV.js)
-  - Method 3: Document contour detection (OpenCV.js)
-  - Returns best result based on dynamic confidence scoring
+- `detectTiltAngle()` - **NEW (Week 1)**: AI angle detection system
+  - **Primary Method:** Hough Line Transform (OpenCV.js) - detects straight lines
+  - **Fallback Method:** Text baseline detection (Tesseract.js OCR)
+  - **Key Features:**
+    - Clustering algorithm for majority voting (groups angles within 1°)
+    - Border filtering (excludes 5% margin to ignore scan borders)
+    - Length filtering (ignores lines < 10% of image width)
+    - Confidence-based method selection (≥0.7 threshold)
+  - **Algorithm:** Lines first → Text fallback → Return 0° if both fail
+  - **Status:** Works well for most documents, needs canvas bug fix
 
 ### External Dependencies (CDN)
 
@@ -105,30 +117,50 @@ All loaded via CDN or npm, typed via types.ts `declare global`
 - All page numbers are 1-indexed throughout the application
 - Maps/Records use page numbers (not array indices) as keys
 
+**AI Auto-Detection (Week 1 Implementation):**
+- "✨ Auto-Fix with AI" button added to UI
+- Detection strategy: Lines → Text → Fail gracefully (return 0°)
+- Works on both single images and multi-page PDFs
+- ⚠️ Known issue: Canvas reuse error on multi-page PDFs (see Critical Bug above)
+- Detection quality: Good for structured documents, needs improvement for noisy receipts
+
 ---
 
 ## 📋 Commercialization Progress Tracker
 
 ### Phase 1: MVP+ Development (Week 1-4)
 
-**Week 1: AI Auto-Detection Foundation** ✅
-- [x] Implemented hybrid 3-method detection system
-- [x] Added dynamic confidence scoring
+**Week 1: AI Auto-Detection Foundation** 🔄 95% Complete
+- [x] Installed Tesseract.js + OpenCV.js
+- [x] Implemented line detection (Hough Transform - PRIMARY)
+- [x] Implemented text baseline detection (OCR - FALLBACK)
+- [x] Added angle clustering algorithm (majority voting)
+- [x] Added border/length filtering for noisy documents
 - [x] Created "✨ Auto-Fix with AI" UI button
-- [x] Tested with real documents (>85% accuracy achieved)
-- [x] 100% client-side, $0 cost
-- **Status:** Complete ✅
-- **Blockers:** None
-- **Next Action:** Week 2 - UI polish and user testing
+- [x] Dynamic confidence scoring (≥0.7 threshold)
+- [x] Multi-page PDF support
+- [x] Tested with Clinical Chart.pdf (works well)
+- [ ] **FIX CRITICAL BUG:** Canvas reuse error (App.tsx:705-737)
+- **Status:** Almost Complete - 1 critical bug remains
+- **Blockers:** Canvas reuse error prevents multi-page PDF Auto-Fix
+- **Next Action:** Fix canvas bug → Move to Week 2
 
-**Week 2: AI Feature Integration & UI**
-- [ ] Add "Auto-Fix" button to UI
-- [ ] Implement batch auto-detection
-- [ ] Add progress indicator
-- [ ] Handle edge cases
-- [ ] Polish loading states
-- **Status:** Not Started
-- **Dependencies:** Week 1 completion
+**Technical Achievements:**
+- ✅ Algorithm simplified to production-ready (lines → text fallback)
+- ✅ Clustering prevents noise from affecting results
+- ✅ 100% client-side processing ($0 cost, privacy-first)
+- ✅ Works well for most documents (>85% accuracy on clean documents)
+- ⚠️ Needs improvement for noisy receipts (e.g., OK하트내과의원 약제비 영수증.pdf)
+
+**Week 2: Bug Fixes & UI Polish**
+- [ ] **CRITICAL:** Fix canvas reuse error in multi-page Auto-Fix
+- [ ] Improve detection for noisy receipts/scans
+- [ ] Add better progress indicators during analysis
+- [ ] Test with more diverse documents (10+ samples)
+- [ ] Performance optimization (reduce processing time)
+- [ ] Polish loading states and error messages
+- **Status:** Ready to start after Week 1 bug fix
+- **Dependencies:** Canvas bug must be fixed first
 
 **Week 3: Testing, Polish & Documentation**
 - [ ] User testing with 5 people

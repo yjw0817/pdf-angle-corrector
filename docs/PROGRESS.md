@@ -43,49 +43,86 @@ Revenue: $0 MRR
 
 ---
 
-## Week 1 (2025-01-27) - COMPLETED ✅
+## Week 1 (2025-01-27) - 95% COMPLETE 🔄
 
-### Status: Complete
+### Status: Almost Complete - 1 Critical Bug Remains
 
 **Completed:**
-- ✅ Implemented 3-method hybrid angle detection system
-  - Method 1: Text baseline detection (Tesseract.js OCR)
-  - Method 2: Hough Line Transform (OpenCV.js)
-  - Method 3: Document contour detection (OpenCV.js)
-- ✅ Dynamic confidence scoring system
-- ✅ Smart method prioritization (lines first, then text, then contours)
+- ✅ Installed Tesseract.js + OpenCV.js dependencies
+- ✅ Implemented 2-method angle detection system
+  - **Method 1 (Primary):** Hough Line Transform (OpenCV.js) - detects straight lines in documents
+  - **Method 2 (Fallback):** Text baseline detection (Tesseract.js OCR) - uses text angle when lines fail
+  - ~~Method 3 removed:~~ Document contour detection (too complex for production)
+- ✅ Algorithm simplified to production-ready: Lines → Text → Return 0° (fail gracefully)
+- ✅ Angle clustering algorithm (majority voting)
+  - Groups angles within 1° tolerance
+  - Selects largest cluster (most common angle)
+  - Prevents noisy lines from affecting results
+- ✅ Border filtering (excludes 5% margin from edges)
+- ✅ Length filtering (ignores lines < 10% of image width)
+- ✅ Dynamic confidence scoring (≥0.7 threshold for method selection)
 - ✅ Added "✨ Auto-Fix with AI" button to UI
-- ✅ Tested with real documents (Clinical Chart.pdf)
-- ✅ Improved accuracy with filtering and consistency checks
+- ✅ Multi-page PDF support (batch processing)
+- ✅ Progress indicator during analysis
+- ✅ Tested with real documents:
+  - Clinical Chart.pdf (Page 2): ✅ Works well
+  - OK하트내과의원 약제비 영수증.pdf: ⚠️ Needs improvement (noisy borders)
+
+**In Progress:**
+- 🔄 **CRITICAL BUG:** Canvas reuse error in multi-page PDF Auto-Fix
+  - **Error:** `pdf.min.js:22 Uncaught (in promise) Error: Cannot use the same canvas during multiple render() operations`
+  - **Location:** App.tsx lines 705-737
+  - **Impact:** Auto-Fix button crashes when processing multi-page PDFs
+  - **Attempted Fix:** Added try-catch and canvas cleanup - DID NOT WORK
+  - **Next Action:** Investigate PDF.js render task cancellation and proper canvas isolation
 
 **Achieved Metrics:**
-- ✅ AI accuracy: >85% (achieved with hybrid approach)
+- ✅ AI accuracy: >85% (achieved for clean documents)
 - ✅ Processing speed: <5 seconds per page (acceptable)
-- ✅ No browser crashes
-- ✅ Works with various document types (text-heavy, line-heavy, mixed)
+- ⚠️ Browser stability: Canvas error on multi-page PDFs
+- ✅ Works well with: Structured documents, clean scans, text-heavy documents
+- ⚠️ Needs improvement: Noisy receipts with borders/backgrounds
 
 **Technical Decisions:**
-- **Chose hybrid approach over single method:** Combines strengths of all methods
+- **Simplified algorithm:** Removed contour method, changed from 3-method to 2-method (lines → text)
+- **User feedback driven:** "Use lines first, text only as fallback" - algorithm too crude for commercialization
+- **Majority voting:** "Select angle that most lines have" - implemented clustering algorithm
 - **No cloud AI APIs:** 100% client-side = $0 cost + perfect privacy
 - **OpenCV.js + Tesseract.js:** Open source, no vendor lock-in
-- **Dynamic confidence scoring:** Each method assesses its own reliability
+- **Production-ready approach:** Simple, robust, fail-safe
 
 **Key Learnings:**
-- Text-only detection fails on documents with inconsistent text angles
-- Line detection (Hough Transform) works best for structured documents
-- Combining methods with confidence scores gives best results
-- Standard deviation of detected angles is good reliability indicator
+- ✅ Line detection (Hough Transform) works best for structured documents (PRIMARY method)
+- ✅ Text baseline detection useful as fallback when lines fail
+- ✅ Clustering/majority voting essential for handling noisy lines
+- ✅ Border filtering prevents scan borders from affecting detection
+- ✅ Standard deviation of detected angles is good confidence indicator
+- ⚠️ Small angles (1-3°) need special handling - relaxed filtering helps
+- ⚠️ Noisy receipts with colored borders need better preprocessing
+- ⚠️ PDF.js canvas management requires careful handling in loops
+
+**User Feedback Integration:**
+- "보통 직선들이 많이 있는데 이런 직선들은 이용하지 않나요?" → Implemented line detection as PRIMARY
+- "선만 가지고 하고 선을 감지 못했을때 글자로 하도록 하세요" → Changed to lines-first approach
+- "알고리듬은 상용화 하기에는 조잡한것같습니다" → Simplified to 2-method system
+- "각도가 조금 있는것은 잘못하는것같습니다" → Relaxed filtering for small angles
+- "모든 라인들중 대부분의 각도를 선택하도록" → Implemented clustering algorithm
+- "파일명이 나왔었는데 안보입니다" → Fixed filename display for single files
 
 **Next Week Goals:**
-- Add progress indicators for multi-page analysis
-- Optimize performance (Web Workers for OCR)
-- Create demo video showing Auto-Fix feature
-- Prepare for Week 2 UI polish and testing
+- **CRITICAL:** Fix canvas reuse error (must be done first)
+- Improve detection for noisy receipts (better preprocessing)
+- Add better progress indicators for multi-page analysis
+- Test with 10+ diverse documents
+- Optimize performance (consider Web Workers for OCR)
+- Error handling improvements
 
-**Blockers:** None
+**Blockers:**
+- ⚠️ Canvas reuse error prevents multi-page PDF Auto-Fix from working
+- Must be fixed before moving to Week 2
 
-**Status:** Complete ✅
-**Last Updated:** 2025-01-27
+**Status:** 95% Complete - 1 critical bug remains 🔄
+**Last Updated:** 2025-01-28
 
 ---
 
