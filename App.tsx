@@ -307,21 +307,21 @@ const App: React.FC = () => {
                 </header>
 
                 {showWarning && pdfFiles.length === 0 && (
-                    <div className="bg-yellow-900/30 border border-yellow-500/50 rounded-xl p-4 mb-6">
+                    <div className="bg-blue-900/20 border border-blue-500/30 rounded-xl p-4 mb-6">
                         <div className="flex items-start gap-3">
-                            <div className="flex-shrink-0 text-yellow-500 text-2xl">⚠️</div>
+                            <div className="flex-shrink-0 text-blue-400 text-xl">ℹ️</div>
                             <div className="flex-1">
-                                <h3 className="font-bold text-yellow-400 mb-2">Important Warning</h3>
+                                <h3 className="font-semibold text-blue-300 mb-2">How it works</h3>
                                 <p className="text-sm text-slate-300 mb-2">
-                                    This tool will save changes directly to the original PDF files. Please ensure you have backups before proceeding.
+                                    Multiple PDF files can be processed at once. Each file will be saved with a dialog prompt.
                                 </p>
-                                <p className="text-sm text-slate-300">
-                                    The save dialog will prompt for each file's location. Select the same location as the original to overwrite it.
+                                <p className="text-xs text-slate-400">
+                                    Note: Multi-file saving requires Chrome or Edge browser with File System Access API support.
                                 </p>
                             </div>
                             <button
                                 onClick={() => setShowWarning(false)}
-                                className="text-slate-400 hover:text-slate-200"
+                                className="text-slate-500 hover:text-slate-300"
                             >
                                 ✕
                             </button>
