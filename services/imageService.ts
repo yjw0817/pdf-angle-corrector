@@ -55,7 +55,7 @@ const detectAngleFromTextBaselines = async (imageUrl: string): Promise<{ angle: 
       const dy = y1 - y0;
       const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
 
-      // Filter reasonable angles (±15 degrees)
+      // Accept all small angles (±15 degrees), including very small ones
       if (Math.abs(angle) < 15) {
         angles.push(angle);
       }
@@ -119,8 +119,14 @@ const detectAngleFromLines = async (imageUrl: string): Promise<{ angle: number; 
         const lines = new cv.Mat();
 
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+        // Adaptive thresholding for better edge detection
         cv.Canny(gray, edges, 50, 150, 3, false);
-        cv.HoughLinesP(edges, lines, 1, Math.PI / 180, 80, 50, 10);
+
+        // HoughLinesP parameters:
+        // rho=1, theta=Math.PI/180 (1 degree), threshold=100 (votes needed)
+        // minLineLength=100 (longer lines more reliable), maxLineGap=20
+        cv.HoughLinesP(edges, lines, 1, Math.PI / 180, 100, 100, 20);
 
         const angles: number[] = [];
 
@@ -132,20 +138,17 @@ const detectAngleFromLines = async (imageUrl: string): Promise<{ angle: number; 
 
           const dx = x2 - x1;
           const dy = y2 - y1;
-          const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
 
-          const normalizedAngle = angle % 180;
-          if (
-            (normalizedAngle < 15 || normalizedAngle > 165) ||
-            (normalizedAngle > 75 && normalizedAngle < 105)
-          ) {
-            let correctedAngle = normalizedAngle;
-            if (correctedAngle > 90) {
-              correctedAngle = correctedAngle - 180;
-            }
-            if (Math.abs(correctedAngle) < 15) {
-              angles.push(correctedAngle);
-            }
+          // Calculate angle in degrees
+          let angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+
+          // Normalize to [-90, 90] range
+          while (angle > 90) angle -= 180;
+          while (angle < -90) angle += 180;
+
+          // Only use nearly horizontal lines (within ±15 degrees of horizontal)
+          if (Math.abs(angle) <= 15) {
+            angles.push(angle);
           }
         }
 
@@ -160,22 +163,27 @@ const detectAngleFromLines = async (imageUrl: string): Promise<{ angle: number; 
           return;
         }
 
-        // Calculate standard deviation
+        // Use median (more robust than mean)
+        const detectedAngle = -median(angles);
+
+        // Calculate standard deviation for confidence
         const mean = angles.reduce((a, b) => a + b, 0) / angles.length;
         const variance = angles.reduce((sum, angle) => sum + Math.pow(angle - mean, 2), 0) / angles.length;
         const stdDev = Math.sqrt(variance);
 
-        // Adjust confidence based on consistency
-        let confidence = 0.8;
-        if (stdDev > 2.0) {
-          confidence = 0.5;
-        } else if (stdDev > 1.0) {
-          confidence = 0.65;
-        } else if (stdDev < 0.5) {
-          confidence = 0.95; // Very consistent lines = high confidence
+        // Simple confidence based on consistency and sample size
+        let confidence = 0.9;
+        if (stdDev > 1.5) {
+          confidence = 0.6; // Low confidence if inconsistent
+        } else if (stdDev > 0.8) {
+          confidence = 0.75; // Medium confidence
         }
 
-        const detectedAngle = -median(angles);
+        // Boost confidence with more lines
+        if (angles.length > 20) {
+          confidence = Math.min(0.95, confidence + 0.05);
+        }
+
         resolve({ angle: detectedAngle, confidence });
 
       } catch (error) {
@@ -285,90 +293,40 @@ const detectDocumentContour = async (imageUrl: string): Promise<{ angle: number;
 };
 
 /**
- * Combined detection method: tries multiple approaches and uses the most reliable result
- * Priority: Dynamic based on confidence scores
+ * Simple detection: Lines first, text only as fallback
  * @param imageUrl - Data URL or blob URL of the image
  * @returns Detected angle in degrees (positive = clockwise correction needed)
  */
 export const detectTiltAngle = async (imageUrl: string): Promise<number> => {
-  console.log('🔍 Starting multi-method angle detection...');
+  console.log('🔍 Auto-detecting document angle...');
 
-  const results: Array<{ method: string; angle: number; confidence: number }> = [];
-
-  // Method 2: Hough Line Transform (try this first - fastest and most reliable for structured docs)
+  // Step 1: Try line detection (most reliable)
   try {
     const lineResult = await detectAngleFromLines(imageUrl);
-    if (lineResult !== null) {
-      results.push({ method: 'Hough Lines', ...lineResult });
-      console.log(`✓ Hough lines: ${lineResult.angle.toFixed(2)}° (confidence: ${lineResult.confidence.toFixed(2)})`);
+    if (lineResult !== null && lineResult.confidence >= 0.7) {
+      console.log(`✅ Line detection: ${lineResult.angle.toFixed(2)}° (confidence: ${lineResult.confidence.toFixed(2)})`);
+      return lineResult.angle;
+    } else if (lineResult !== null) {
+      console.log(`⚠️ Line detection low confidence: ${lineResult.confidence.toFixed(2)}, trying text detection...`);
     }
   } catch (error) {
     console.warn('Line detection failed:', error);
   }
 
-  // Method 1: Text baselines (only if lines didn't give high confidence)
-  const needTextDetection = results.length === 0 || results[0].confidence < 0.8;
-  if (needTextDetection) {
-    try {
-      const textResult = await detectAngleFromTextBaselines(imageUrl);
-      if (textResult !== null) {
-        results.push({ method: 'Text Baselines', ...textResult });
-        console.log(`✓ Text baselines: ${textResult.angle.toFixed(2)}° (confidence: ${textResult.confidence.toFixed(2)})`);
-      }
-    } catch (error) {
-      console.warn('Text baseline detection failed:', error);
+  // Step 2: Fallback to text detection
+  try {
+    const textResult = await detectAngleFromTextBaselines(imageUrl);
+    if (textResult !== null) {
+      console.log(`✅ Text detection (fallback): ${textResult.angle.toFixed(2)}° (confidence: ${textResult.confidence.toFixed(2)})`);
+      return textResult.angle;
     }
+  } catch (error) {
+    console.warn('Text detection failed:', error);
   }
 
-  // Method 3: Document contours (only as last resort)
-  const needContourDetection = results.length === 0 || results.every(r => r.confidence < 0.6);
-  if (needContourDetection) {
-    try {
-      const contourResult = await detectDocumentContour(imageUrl);
-      if (contourResult !== null) {
-        results.push({ method: 'Contours', angle: contourResult.angle, confidence: 0.5 });
-        console.log(`✓ Contours: ${contourResult.angle.toFixed(2)}° (confidence: 0.5)`);
-      }
-    } catch (error) {
-      console.warn('Contour detection failed:', error);
-    }
-  }
-
-  // Select best result based on confidence
-  if (results.length === 0) {
-    console.warn('❌ No detection method succeeded');
-    return 0;
-  }
-
-  // If we have high-confidence line detection, use it immediately
-  const lineResult = results.find(r => r.method === 'Hough Lines' && r.confidence >= 0.9);
-  if (lineResult) {
-    console.log(`✅ High-confidence line detection: ${lineResult.angle.toFixed(2)}°`);
-    return lineResult.angle;
-  }
-
-  // If multiple results are similar, use weighted average
-  if (results.length >= 2) {
-    const angles = results.map(r => r.angle);
-    const avgAngle = angles.reduce((a, b) => a + b, 0) / angles.length;
-    const variance = angles.reduce((sum, angle) => sum + Math.pow(angle - avgAngle, 2), 0) / angles.length;
-
-    // If variance is low (results agree), use weighted average
-    if (variance < 1.0) {
-      const weightedSum = results.reduce((sum, r) => sum + r.angle * r.confidence, 0);
-      const totalConfidence = results.reduce((sum, r) => sum + r.confidence, 0);
-      const finalAngle = weightedSum / totalConfidence;
-      console.log(`✅ Methods agree! Using weighted average: ${finalAngle.toFixed(2)}° (variance: ${variance.toFixed(2)})`);
-      return finalAngle;
-    } else {
-      console.log(`⚠️ Methods disagree (variance: ${variance.toFixed(2)}), using highest confidence`);
-    }
-  }
-
-  // Otherwise use highest confidence result
-  const best = results.reduce((a, b) => a.confidence > b.confidence ? a : b);
-  console.log(`✅ Best result: ${best.method} = ${best.angle.toFixed(2)}° (confidence: ${best.confidence.toFixed(2)})`);
-  return best.angle;
+  // Step 3: Last resort - no detection succeeded
+  console.warn('❌ Auto-detection failed, returning 0°');
+  return 0;
 };
 
 const median = (values: number[]): number => {

@@ -654,9 +654,9 @@ const App: React.FC = () => {
                     {fileCount > 0 && (
                         <>
                             {/* File Navigation */}
-                            {fileCount > 1 && (
-                                <div className="bg-slate-800 p-4 rounded-xl shadow-lg">
-                                    <div className="flex items-center gap-4">
+                            <div className="bg-slate-800 p-4 rounded-xl shadow-lg">
+                                <div className="flex items-center gap-4">
+                                    {fileCount > 1 && (
                                         <button
                                             onClick={() => setCurrentFileIndex(Math.max(0, currentFileIndex - 1))}
                                             disabled={currentFileIndex === 0}
@@ -664,13 +664,17 @@ const App: React.FC = () => {
                                         >
                                             ← Previous
                                         </button>
-                                        <div className="flex-1 text-center">
+                                    )}
+                                    <div className="flex-1 text-center">
+                                        {fileCount > 1 && (
                                             <p className="text-sm text-slate-400">File {currentFileIndex + 1} of {fileCount}</p>
-                                            <p className="font-semibold text-brand-400 truncate">
-                                                {mode === 'pdf' && currentPdfFile ? currentPdfFile.file.name : ''}
-                                                {mode === 'image' && currentImageFile ? currentImageFile.file.name : ''}
-                                            </p>
-                                        </div>
+                                        )}
+                                        <p className="font-semibold text-brand-400 truncate">
+                                            {mode === 'pdf' && currentPdfFile ? currentPdfFile.file.name : ''}
+                                            {mode === 'image' && currentImageFile ? currentImageFile.file.name : ''}
+                                        </p>
+                                    </div>
+                                    {fileCount > 1 && (
                                         <button
                                             onClick={() => setCurrentFileIndex(Math.min(fileCount - 1, currentFileIndex + 1))}
                                             disabled={currentFileIndex === fileCount - 1}
@@ -678,9 +682,9 @@ const App: React.FC = () => {
                                         >
                                             Next →
                                         </button>
-                                    </div>
+                                    )}
                                 </div>
-                            )}
+                            </div>
 
                             {/* AI Auto-Fix Button */}
                             <div className="bg-slate-800 p-4 rounded-xl shadow-lg">
