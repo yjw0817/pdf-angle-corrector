@@ -78,16 +78,19 @@ const App: React.FC = () => {
 
                     const rotations: Record<number, number> = {};
                     const offsets: Record<number, { x: number; y: number }> = {};
+                    const flips: Record<number, { horizontal: boolean; vertical: boolean }> = {};
                     for (let i = 1; i <= doc.numPages; i++) {
                         rotations[i] = 0;
                         offsets[i] = { x: 0, y: 0 };
+                        flips[i] = { horizontal: false, vertical: false };
                     }
 
                     loadedFiles.push({
                         file,
                         pdfDoc: doc,
                         rotations,
-                        offsets
+                        offsets,
+                        flips
                     });
                 }
 
@@ -129,7 +132,9 @@ const App: React.FC = () => {
                                 file,
                                 dataUrl: e.target?.result as string,
                                 rotation: 0,
-                                offset: { x: 0, y: 0 }
+                                offset: { x: 0, y: 0 },
+                                flipHorizontal: false,
+                                flipVertical: false
                             });
                         };
                         reader.readAsDataURL(file);
@@ -176,6 +181,42 @@ const App: React.FC = () => {
                 updated[currentFileIndex] = {
                     ...updated[currentFileIndex],
                     rotation: updated[currentFileIndex].rotation + delta
+                };
+                return updated;
+            });
+        }
+    };
+
+    const handleFlip = (direction: 'horizontal' | 'vertical') => {
+        if (mode === 'pdf' && currentPdfFile) {
+            setPdfFiles(prev => {
+                const updated = [...prev];
+                const newFlips = { ...updated[currentFileIndex].flips };
+                const pagesToUpdate = selectedPages.size > 0
+                    ? Array.from(selectedPages)
+                    : Object.keys(newFlips).map(Number);
+
+                pagesToUpdate.forEach(pageNum => {
+                    const currentFlip = newFlips[pageNum] || { horizontal: false, vertical: false };
+                    newFlips[pageNum] = {
+                        ...currentFlip,
+                        [direction]: !currentFlip[direction]
+                    };
+                });
+
+                updated[currentFileIndex] = {
+                    ...updated[currentFileIndex],
+                    flips: newFlips
+                };
+                return updated;
+            });
+        } else if (mode === 'image' && currentImageFile) {
+            setImageFiles(prev => {
+                const updated = [...prev];
+                updated[currentFileIndex] = {
+                    ...updated[currentFileIndex],
+                    [direction === 'horizontal' ? 'flipHorizontal' : 'flipVertical']:
+                        !updated[currentFileIndex][direction === 'horizontal' ? 'flipHorizontal' : 'flipVertical']
                 };
                 return updated;
             });
@@ -700,6 +741,68 @@ const App: React.FC = () => {
                                         <RotateCcwIcon className="h-4 w-4" /> Reset
                                     </button>
                                 </div>
+
+                                {/* Quick Rotation Buttons */}
+                                <div className="space-y-3">
+                                    <div className="flex flex-wrap gap-2">
+                                        <button
+                                            onClick={() => handleRotationChange(90)}
+                                            className="px-3 py-1.5 text-sm font-semibold bg-slate-700 hover:bg-slate-600 rounded-md transition-colors"
+                                        >
+                                            ↻ 90°
+                                        </button>
+                                        <button
+                                            onClick={() => handleRotationChange(180)}
+                                            className="px-3 py-1.5 text-sm font-semibold bg-slate-700 hover:bg-slate-600 rounded-md transition-colors"
+                                        >
+                                            ↻ 180°
+                                        </button>
+                                        <button
+                                            onClick={() => handleRotationChange(270)}
+                                            className="px-3 py-1.5 text-sm font-semibold bg-slate-700 hover:bg-slate-600 rounded-md transition-colors"
+                                        >
+                                            ↻ 270°
+                                        </button>
+                                        <button
+                                            onClick={() => handleRotationChange(-90)}
+                                            className="px-3 py-1.5 text-sm font-semibold bg-slate-700 hover:bg-slate-600 rounded-md transition-colors"
+                                        >
+                                            ↺ 90°
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <input
+                                            type="number"
+                                            placeholder="Custom angle"
+                                            className="px-3 py-1.5 text-sm bg-slate-700 text-slate-100 rounded-md border border-slate-600 focus:border-brand-500 focus:outline-none w-32"
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    const value = parseFloat((e.target as HTMLInputElement).value);
+                                                    if (!isNaN(value)) {
+                                                        handleRotationChange(value);
+                                                        (e.target as HTMLInputElement).value = '';
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                        <span className="text-xs text-slate-400 self-center">Press Enter to apply</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <button
+                                            onClick={() => handleFlip('horizontal')}
+                                            className="px-3 py-1.5 text-sm font-semibold bg-slate-700 hover:bg-slate-600 rounded-md transition-colors"
+                                        >
+                                            ↔ Flip Horizontal
+                                        </button>
+                                        <button
+                                            onClick={() => handleFlip('vertical')}
+                                            className="px-3 py-1.5 text-sm font-semibold bg-slate-700 hover:bg-slate-600 rounded-md transition-colors"
+                                        >
+                                            ↕ Flip Vertical
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <div className="grid grid-cols-1 gap-4">
                                     {mode === 'pdf' ? (
                                         <button
@@ -760,6 +863,7 @@ const App: React.FC = () => {
                                                 isSelected={selectedPages.has(i + 1)}
                                                 onSelect={handleToggleSelect}
                                                 offset={currentPdfFile.offsets[i + 1] || { x: 0, y: 0 }}
+                                                flip={currentPdfFile.flips[i + 1] || { horizontal: false, vertical: false }}
                                                 onOffsetChange={handlePageOffsetChange}
                                                 onResetOffset={handleResetPageOffset}
                                                 showGuidelines={showGuidelines}
@@ -770,6 +874,8 @@ const App: React.FC = () => {
                                                 imageUrl={currentImageFile.dataUrl}
                                                 rotation={currentImageFile.rotation}
                                                 offset={currentImageFile.offset}
+                                                flipHorizontal={currentImageFile.flipHorizontal}
+                                                flipVertical={currentImageFile.flipVertical}
                                                 onOffsetChange={handleImageOffsetChange}
                                                 onResetOffset={handleResetImageOffset}
                                                 showGuidelines={showGuidelines}
@@ -793,12 +899,13 @@ interface PdfPagePreviewProps {
     isSelected: boolean;
     onSelect: (pageNumber: number) => void;
     offset: { x: number; y: number };
+    flip: { horizontal: boolean; vertical: boolean };
     onOffsetChange: (pageNumber: number, deltaX: number, deltaY: number) => void;
     onResetOffset: (pageNumber: number) => void;
     showGuidelines: boolean;
 }
 
-const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({ pdfDoc, pageNumber, rotation, isSelected, onSelect, offset, onOffsetChange, onResetOffset, showGuidelines }) => {
+const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({ pdfDoc, pageNumber, rotation, isSelected, onSelect, offset, flip, onOffsetChange, onResetOffset, showGuidelines }) => {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
     const [isPanning, setIsPanning] = useState(false);
     const [panStart, setPanStart] = useState<{ x: number; y: number } | null>(null);
@@ -897,7 +1004,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({ pdfDoc, pageNumber, rot
                 <div
                     className="absolute"
                     style={{
-                        transform: `translate(${offset.x}px, ${offset.y}px) rotate(${rotation}deg)`,
+                        transform: `translate(${offset.x}px, ${offset.y}px) scale(${flip.horizontal ? -1 : 1}, ${flip.vertical ? -1 : 1}) rotate(${rotation}deg)`,
                         transformOrigin: 'center center',
                         left: '50%',
                         top: '50%',
@@ -939,12 +1046,14 @@ interface ImagePreviewProps {
     imageUrl: string;
     rotation: number;
     offset: { x: number; y: number };
+    flipHorizontal: boolean;
+    flipVertical: boolean;
     onOffsetChange: (deltaX: number, deltaY: number) => void;
     onResetOffset: () => void;
     showGuidelines: boolean;
 }
 
-const ImagePreview: React.FC<ImagePreviewProps> = ({ imageUrl, rotation, offset, onOffsetChange, onResetOffset, showGuidelines }) => {
+const ImagePreview: React.FC<ImagePreviewProps> = ({ imageUrl, rotation, offset, flipHorizontal, flipVertical, onOffsetChange, onResetOffset, showGuidelines }) => {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
     const [isPanning, setIsPanning] = useState(false);
     const [panStart, setPanStart] = useState<{ x: number; y: number } | null>(null);
@@ -1036,7 +1145,7 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ imageUrl, rotation, offset,
                 <div
                     className="absolute"
                     style={{
-                        transform: `translate(${offset.x}px, ${offset.y}px) rotate(${rotation}deg)`,
+                        transform: `translate(${offset.x}px, ${offset.y}px) scale(${flipHorizontal ? -1 : 1}, ${flipVertical ? -1 : 1}) rotate(${rotation}deg)`,
                         transformOrigin: 'center center',
                         left: '50%',
                         top: '50%',

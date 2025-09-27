@@ -56,6 +56,7 @@ export interface PdfFileData {
   pdfDoc: PdfDocument;
   rotations: Record<number, number>;
   offsets: Record<number, { x: number; y: number }>;
+  flips: Record<number, { horizontal: boolean; vertical: boolean }>;
 }
 
 export interface ImageFileData {
@@ -63,6 +64,8 @@ export interface ImageFileData {
   dataUrl: string;
   rotation: number;
   offset: { x: number; y: number };
+  flipHorizontal: boolean;
+  flipVertical: boolean;
 }
 
 export type AppMode = 'pdf' | 'image';
