@@ -1,0 +1,5 @@
+{
+  "name": "PDF Angle Corrector",
+  "description": "An intelligent tool to automatically detect and correct the rotation angle of scanned PDF documents, making them easier to read and process.",
+  "requestFramePermissions": []
+}
