@@ -58,5 +58,14 @@ export interface PdfFileData {
   offsets: Record<number, { x: number; y: number }>;
 }
 
+export interface ImageFileData {
+  file: File;
+  dataUrl: string;
+  rotation: number;
+  offset: { x: number; y: number };
+}
+
+export type AppMode = 'pdf' | 'image';
+
 // This empty export ensures the file is treated as a module, which is required for 'declare global'.
 export {};

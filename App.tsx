@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import type { PdfDocument, PdfFileData } from './types';
+import type { PdfDocument, PdfFileData, ImageFileData, AppMode } from './types';
 import { createRotatedPdf } from './services/pdfService';
+import { rotateAndExportImage, createPdfFromImages } from './services/imageService';
 import { UploadIcon, DownloadIcon, RotateCcwIcon, LoaderIcon } from './components/Icons';
 
 type Status = 'idle' | 'loading' | 'analyzing' | 'generating' | 'success' | 'error';
@@ -28,24 +29,34 @@ const StatusIndicator: React.FC<{ status: Status; message: string }> = ({ status
 };
 
 const App: React.FC = () => {
+    const [mode, setMode] = useState<AppMode>('pdf');
     const [pdfFiles, setPdfFiles] = useState<PdfFileData[]>([]);
+    const [imageFiles, setImageFiles] = useState<ImageFileData[]>([]);
     const [currentFileIndex, setCurrentFileIndex] = useState<number>(0);
     const [selectedPages, setSelectedPages] = useState<Set<number>>(new Set());
     const [status, setStatus] = useState<Status>('idle');
     const [statusMessage, setStatusMessage] = useState<string>('');
     const [isDragging, setIsDragging] = useState<boolean>(false);
     const [showGuidelines, setShowGuidelines] = useState<boolean>(true);
-    const [showWarning, setShowWarning] = useState<boolean>(true);
+    const [showInfo, setShowInfo] = useState<boolean>(true);
     const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
-    const currentFile = pdfFiles[currentFileIndex];
+    const currentPdfFile = mode === 'pdf' ? pdfFiles[currentFileIndex] : null;
+    const currentImageFile = mode === 'image' ? imageFiles[currentFileIndex] : null;
 
     useEffect(() => {
-        // Reset selected pages when switching files
         setSelectedPages(new Set());
-    }, [currentFileIndex]);
+    }, [currentFileIndex, mode]);
 
-    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    useEffect(() => {
+        // Reset when switching modes
+        setPdfFiles([]);
+        setImageFiles([]);
+        setCurrentFileIndex(0);
+        setSelectedPages(new Set());
+    }, [mode]);
+
+    const handlePdfFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
             const files = Array.from(e.target.files).filter(f => f.type === 'application/pdf');
             if (files.length === 0) {
@@ -95,29 +106,83 @@ const App: React.FC = () => {
         e.target.value = '';
     };
 
-    const handleRotationChange = (delta: number) => {
-        if (!currentFile) return;
+    const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
+            if (files.length === 0) {
+                setStatus('error');
+                setStatusMessage('Please select image files only.');
+                setTimeout(() => setStatus('idle'), 2000);
+                e.target.value = '';
+                return;
+            }
 
-        setPdfFiles(prev => {
-            const updated = [...prev];
-            const newRotations = { ...updated[currentFileIndex].rotations };
-            const pagesToUpdate = selectedPages.size > 0
-                ? Array.from(selectedPages)
-                : Object.keys(newRotations).map(Number);
+            setStatus('loading');
+            setStatusMessage(`Loading ${files.length} image(s)...`);
 
-            pagesToUpdate.forEach(pageNum => {
-                newRotations[pageNum] = (newRotations[pageNum] || 0) + delta;
-            });
+            try {
+                const loadedFiles: ImageFileData[] = await Promise.all(
+                    files.map(file => new Promise<ImageFileData>((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            resolve({
+                                file,
+                                dataUrl: e.target?.result as string,
+                                rotation: 0,
+                                offset: { x: 0, y: 0 }
+                            });
+                        };
+                        reader.readAsDataURL(file);
+                    }))
+                );
 
-            updated[currentFileIndex] = {
-                ...updated[currentFileIndex],
-                rotations: newRotations
-            };
-            return updated;
-        });
+                setImageFiles(loadedFiles);
+                setCurrentFileIndex(0);
+                setStatus('success');
+                setStatusMessage(`Loaded ${loadedFiles.length} image(s).`);
+            } catch (error) {
+                console.error("Error loading images:", error);
+                setStatus('error');
+                setStatusMessage('Failed to load images.');
+            } finally {
+                setTimeout(() => setStatus('idle'), 2000);
+            }
+        }
+        e.target.value = '';
     };
 
-    const handleSaveAll = async () => {
+    const handleRotationChange = (delta: number) => {
+        if (mode === 'pdf' && currentPdfFile) {
+            setPdfFiles(prev => {
+                const updated = [...prev];
+                const newRotations = { ...updated[currentFileIndex].rotations };
+                const pagesToUpdate = selectedPages.size > 0
+                    ? Array.from(selectedPages)
+                    : Object.keys(newRotations).map(Number);
+
+                pagesToUpdate.forEach(pageNum => {
+                    newRotations[pageNum] = (newRotations[pageNum] || 0) + delta;
+                });
+
+                updated[currentFileIndex] = {
+                    ...updated[currentFileIndex],
+                    rotations: newRotations
+                };
+                return updated;
+            });
+        } else if (mode === 'image' && currentImageFile) {
+            setImageFiles(prev => {
+                const updated = [...prev];
+                updated[currentFileIndex] = {
+                    ...updated[currentFileIndex],
+                    rotation: updated[currentFileIndex].rotation + delta
+                };
+                return updated;
+            });
+        }
+    };
+
+    const handleSavePdfs = async () => {
         if (pdfFiles.length === 0) return;
         if (!('showSaveFilePicker' in window)) {
             setStatus('error');
@@ -127,7 +192,7 @@ const App: React.FC = () => {
         }
 
         setStatus('generating');
-        setStatusMessage('Saving all files...');
+        setStatusMessage('Saving all PDFs...');
 
         try {
             for (let i = 0; i < pdfFiles.length; i++) {
@@ -165,11 +230,136 @@ const App: React.FC = () => {
             }
 
             setStatus('success');
-            setStatusMessage(`All ${pdfFiles.length} files saved successfully!`);
+            setStatusMessage(`All ${pdfFiles.length} PDFs saved!`);
         } catch (error) {
             console.error("Error saving PDFs:", error);
             setStatus('error');
             setStatusMessage('Failed to save PDF files.');
+        } finally {
+            setTimeout(() => setStatus('idle'), 2000);
+        }
+    };
+
+    const handleExportImagesToPdf = async () => {
+        if (imageFiles.length === 0) return;
+
+        setStatus('generating');
+        setStatusMessage('Creating PDF from images...');
+
+        try {
+            const imageUrls = imageFiles.map(img => img.dataUrl);
+            const rotations: Record<number, number> = {};
+            const offsets: Record<number, { x: number; y: number }> = {};
+
+            imageFiles.forEach((img, i) => {
+                rotations[i + 1] = img.rotation;
+                offsets[i + 1] = img.offset;
+            });
+
+            const pdfBytes = await createPdfFromImages(imageUrls, rotations, offsets);
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+
+            if ('showSaveFilePicker' in window) {
+                try {
+                    const handle = await (window as any).showSaveFilePicker({
+                        suggestedName: 'images_corrected.pdf',
+                        types: [{
+                            description: 'PDF Files',
+                            accept: { 'application/pdf': ['.pdf'] }
+                        }]
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                    setStatus('success');
+                    setStatusMessage('PDF created successfully!');
+                    return;
+                } catch (err: any) {
+                    if (err.name === 'AbortError') {
+                        setStatus('idle');
+                        return;
+                    }
+                }
+            }
+
+            // Fallback download
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'images_corrected.pdf';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            setStatus('success');
+            setStatusMessage('PDF created successfully!');
+        } catch (error) {
+            console.error("Error creating PDF:", error);
+            setStatus('error');
+            setStatusMessage('Failed to create PDF.');
+        } finally {
+            setTimeout(() => setStatus('idle'), 2000);
+        }
+    };
+
+    const handleSaveImages = async () => {
+        if (imageFiles.length === 0) return;
+        if (!('showSaveFilePicker' in window)) {
+            setStatus('error');
+            setStatusMessage('Your browser does not support automatic file saving. Please use Chrome or Edge.');
+            setTimeout(() => setStatus('idle'), 3000);
+            return;
+        }
+
+        setStatus('generating');
+        setStatusMessage('Saving images...');
+
+        try {
+            for (let i = 0; i < imageFiles.length; i++) {
+                const imageFile = imageFiles[i];
+                const format = imageFile.file.type.split('/')[1] as 'jpg' | 'png' | 'webp' || 'png';
+
+                const blob = await rotateAndExportImage(
+                    imageFile.dataUrl,
+                    imageFile.rotation,
+                    imageFile.offset,
+                    format === 'jpeg' ? 'jpg' : format
+                );
+
+                const originalName = imageFile.file.name;
+                const nameWithoutExt = originalName.replace(/\.[^/.]+$/, '');
+                const ext = originalName.split('.').pop() || format;
+
+                try {
+                    const handle = await (window as any).showSaveFilePicker({
+                        suggestedName: `${nameWithoutExt}_corrected.${ext}`,
+                        types: [{
+                            description: 'Image Files',
+                            accept: { [imageFile.file.type]: [`.${ext}`] }
+                        }]
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+
+                    setStatusMessage(`Saved ${i + 1}/${imageFiles.length} images...`);
+                } catch (err: any) {
+                    if (err.name === 'AbortError') {
+                        setStatus('idle');
+                        setStatusMessage(`Cancelled. Saved ${i}/${imageFiles.length} images.`);
+                        setTimeout(() => setStatus('idle'), 2000);
+                        return;
+                    }
+                    throw err;
+                }
+            }
+
+            setStatus('success');
+            setStatusMessage(`All ${imageFiles.length} images saved!`);
+        } catch (error) {
+            console.error("Error saving images:", error);
+            setStatus('error');
+            setStatusMessage('Failed to save images.');
         } finally {
             setTimeout(() => setStatus('idle'), 2000);
         }
@@ -187,53 +377,45 @@ const App: React.FC = () => {
         setIsDragging(false);
 
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            const files = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf');
-            if (files.length === 0) {
-                setStatus('error');
-                setStatusMessage('Please drop PDF files only.');
-                setTimeout(() => setStatus('idle'), 2000);
-                return;
-            }
+            const files = Array.from(e.dataTransfer.files);
 
-            setStatus('loading');
-            setStatusMessage(`Loading ${files.length} PDF file(s)...`);
-
-            try {
-                const loadedFiles: PdfFileData[] = [];
-                for (const file of files) {
-                    const arrayBuffer = await file.arrayBuffer();
-                    const doc = await pdfjsLib.getDocument(arrayBuffer).promise;
-
-                    const rotations: Record<number, number> = {};
-                    const offsets: Record<number, { x: number; y: number }> = {};
-                    for (let i = 1; i <= doc.numPages; i++) {
-                        rotations[i] = 0;
-                        offsets[i] = { x: 0, y: 0 };
-                    }
-
-                    loadedFiles.push({
-                        file,
-                        pdfDoc: doc,
-                        rotations,
-                        offsets
-                    });
+            if (mode === 'pdf') {
+                const pdfFiles = files.filter(f => f.type === 'application/pdf');
+                if (pdfFiles.length === 0) {
+                    setStatus('error');
+                    setStatusMessage('Please drop PDF files only.');
+                    setTimeout(() => setStatus('idle'), 2000);
+                    return;
                 }
-
-                setPdfFiles(loadedFiles);
-                setCurrentFileIndex(0);
-                setStatus('success');
-                setStatusMessage(`Loaded ${loadedFiles.length} PDF file(s).`);
-            } catch (error) {
-                console.error("Error loading PDFs:", error);
-                setStatus('error');
-                setStatusMessage('Failed to load PDF files.');
-            } finally {
-                setTimeout(() => setStatus('idle'), 2000);
+                // Simulate file input change
+                const input = document.getElementById('file-upload') as HTMLInputElement;
+                const dataTransfer = new DataTransfer();
+                pdfFiles.forEach(f => dataTransfer.items.add(f));
+                if (input) {
+                    input.files = dataTransfer.files;
+                    handlePdfFileChange({ target: input, currentTarget: input } as any);
+                }
+            } else {
+                const imageFiles = files.filter(f => f.type.startsWith('image/'));
+                if (imageFiles.length === 0) {
+                    setStatus('error');
+                    setStatusMessage('Please drop image files only.');
+                    setTimeout(() => setStatus('idle'), 2000);
+                    return;
+                }
+                const input = document.getElementById('file-upload') as HTMLInputElement;
+                const dataTransfer = new DataTransfer();
+                imageFiles.forEach(f => dataTransfer.items.add(f));
+                if (input) {
+                    input.files = dataTransfer.files;
+                    handleImageFileChange({ target: input, currentTarget: input } as any);
+                }
             }
         }
     };
 
     const handleToggleSelect = (pageNumber: number) => {
+        if (mode !== 'pdf') return;
         const newSelection = new Set(selectedPages);
         if (newSelection.has(pageNumber)) {
             newSelection.delete(pageNumber);
@@ -244,47 +426,82 @@ const App: React.FC = () => {
     };
 
     const handlePageOffsetChange = useCallback((pageNumber: number, deltaX: number, deltaY: number) => {
-        setPdfFiles(prev => {
-            const updated = [...prev];
-            const newOffsets = { ...updated[currentFileIndex].offsets };
-            newOffsets[pageNumber] = {
-                x: (newOffsets[pageNumber]?.x || 0) + deltaX,
-                y: (newOffsets[pageNumber]?.y || 0) + deltaY
-            };
-            updated[currentFileIndex] = {
-                ...updated[currentFileIndex],
-                offsets: newOffsets
-            };
-            return updated;
-        });
-    }, [currentFileIndex]);
+        if (mode === 'pdf') {
+            setPdfFiles(prev => {
+                const updated = [...prev];
+                const newOffsets = { ...updated[currentFileIndex].offsets };
+                newOffsets[pageNumber] = {
+                    x: (newOffsets[pageNumber]?.x || 0) + deltaX,
+                    y: (newOffsets[pageNumber]?.y || 0) + deltaY
+                };
+                updated[currentFileIndex] = {
+                    ...updated[currentFileIndex],
+                    offsets: newOffsets
+                };
+                return updated;
+            });
+        }
+    }, [currentFileIndex, mode]);
+
+    const handleImageOffsetChange = useCallback((deltaX: number, deltaY: number) => {
+        if (mode === 'image') {
+            setImageFiles(prev => {
+                const updated = [...prev];
+                updated[currentFileIndex] = {
+                    ...updated[currentFileIndex],
+                    offset: {
+                        x: updated[currentFileIndex].offset.x + deltaX,
+                        y: updated[currentFileIndex].offset.y + deltaY
+                    }
+                };
+                return updated;
+            });
+        }
+    }, [currentFileIndex, mode]);
 
     const handleResetPageOffset = useCallback((pageNumber: number) => {
-        setPdfFiles(prev => {
-            const updated = [...prev];
-            const newOffsets = { ...updated[currentFileIndex].offsets };
-            newOffsets[pageNumber] = { x: 0, y: 0 };
-            updated[currentFileIndex] = {
-                ...updated[currentFileIndex],
-                offsets: newOffsets
-            };
-            return updated;
-        });
-    }, [currentFileIndex]);
+        if (mode === 'pdf') {
+            setPdfFiles(prev => {
+                const updated = [...prev];
+                const newOffsets = { ...updated[currentFileIndex].offsets };
+                newOffsets[pageNumber] = { x: 0, y: 0 };
+                updated[currentFileIndex] = {
+                    ...updated[currentFileIndex],
+                    offsets: newOffsets
+                };
+                return updated;
+            });
+        }
+    }, [currentFileIndex, mode]);
+
+    const handleResetImageOffset = useCallback(() => {
+        if (mode === 'image') {
+            setImageFiles(prev => {
+                const updated = [...prev];
+                updated[currentFileIndex] = {
+                    ...updated[currentFileIndex],
+                    offset: { x: 0, y: 0 }
+                };
+                return updated;
+            });
+        }
+    }, [currentFileIndex, mode]);
 
     const [sliderValue, setSliderValue] = useState<number>(0);
-    const pagesForSlider = selectedPages.size > 0 ? Array.from(selectedPages).sort((a, b) => a - b) : [];
-    const displayRotation = currentFile && pagesForSlider.length > 0
-        ? currentFile.rotations[pagesForSlider[0]] ?? 0
+    const pagesForSlider = mode === 'pdf' && selectedPages.size > 0
+        ? Array.from(selectedPages).sort((a, b) => a - b)
+        : [];
+    const displayRotation = mode === 'pdf' && currentPdfFile && pagesForSlider.length > 0
+        ? currentPdfFile.rotations[pagesForSlider[0]] ?? 0
+        : mode === 'image' && currentImageFile
+        ? currentImageFile.rotation
         : 0;
 
     useEffect(() => {
-        if (pagesForSlider.length > 0) {
-            setSliderValue(displayRotation);
-        } else {
-            setSliderValue(0);
-        }
-    }, [selectedPages, displayRotation, pagesForSlider.length]);
+        setSliderValue(displayRotation);
+    }, [displayRotation, currentFileIndex, selectedPages]);
+
+    const fileCount = mode === 'pdf' ? pdfFiles.length : imageFiles.length;
 
     return (
         <div
@@ -299,28 +516,58 @@ const App: React.FC = () => {
             <div className="w-full max-w-5xl mx-auto">
                 <header className="text-center mb-8">
                     <h1 className="text-4xl sm:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-600">
-                        Multi-PDF Angle Corrector
+                        Document Angle Corrector
                     </h1>
                     <p className="text-slate-400 mt-2">
-                        Upload multiple PDFs, adjust angles, and save to original files.
+                        Adjust angles and save corrected files
                     </p>
                 </header>
 
-                {showWarning && pdfFiles.length === 0 && (
+                {/* Mode Tabs */}
+                <div className="flex justify-center mb-6">
+                    <div className="inline-flex bg-slate-800 rounded-lg p-1">
+                        <button
+                            onClick={() => setMode('pdf')}
+                            className={`px-6 py-2 rounded-md font-semibold transition-colors ${
+                                mode === 'pdf'
+                                    ? 'bg-brand-600 text-white'
+                                    : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                        >
+                            PDF Mode
+                        </button>
+                        <button
+                            onClick={() => setMode('image')}
+                            className={`px-6 py-2 rounded-md font-semibold transition-colors ${
+                                mode === 'image'
+                                    ? 'bg-brand-600 text-white'
+                                    : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                        >
+                            Image Mode
+                        </button>
+                    </div>
+                </div>
+
+                {showInfo && fileCount === 0 && (
                     <div className="bg-blue-900/20 border border-blue-500/30 rounded-xl p-4 mb-6">
                         <div className="flex items-start gap-3">
                             <div className="flex-shrink-0 text-blue-400 text-xl">ℹ️</div>
                             <div className="flex-1">
-                                <h3 className="font-semibold text-blue-300 mb-2">How it works</h3>
+                                <h3 className="font-semibold text-blue-300 mb-2">
+                                    {mode === 'pdf' ? 'PDF Mode' : 'Image Mode'}
+                                </h3>
                                 <p className="text-sm text-slate-300 mb-2">
-                                    Multiple PDF files can be processed at once. Each file will be saved with a dialog prompt.
+                                    {mode === 'pdf'
+                                        ? 'Process multiple PDF files and save each individually with angle corrections.'
+                                        : 'Process multiple images and export as a single corrected PDF file.'}
                                 </p>
                                 <p className="text-xs text-slate-400">
-                                    Note: Multi-file saving requires Chrome or Edge browser with File System Access API support.
+                                    Note: File saving requires Chrome or Edge browser.
                                 </p>
                             </div>
                             <button
-                                onClick={() => setShowWarning(false)}
+                                onClick={() => setShowInfo(false)}
                                 className="text-slate-500 hover:text-slate-300"
                             >
                                 ✕
@@ -334,22 +581,30 @@ const App: React.FC = () => {
                         <div className="flex flex-col items-center justify-center">
                             <UploadIcon className="h-12 w-12 text-slate-500 mb-4" />
                             <label htmlFor="file-upload" className="relative cursor-pointer bg-brand-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-brand-700 transition-colors">
-                                <span>Select PDF Files</span>
-                                <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleFileChange} accept="application/pdf" multiple />
+                                <span>Select {mode === 'pdf' ? 'PDF' : 'Image'} Files</span>
+                                <input
+                                    id="file-upload"
+                                    name="file-upload"
+                                    type="file"
+                                    className="sr-only"
+                                    onChange={mode === 'pdf' ? handlePdfFileChange : handleImageFileChange}
+                                    accept={mode === 'pdf' ? 'application/pdf' : 'image/*'}
+                                    multiple
+                                />
                             </label>
                             <p className="mt-2 text-sm text-slate-400">or drag and drop</p>
                         </div>
-                        {pdfFiles.length > 0 && (
+                        {fileCount > 0 && (
                             <p className="mt-4 text-slate-300">
-                                <span className="font-semibold text-brand-400">{pdfFiles.length} PDF file(s)</span> loaded
+                                <span className="font-semibold text-brand-400">{fileCount} {mode === 'pdf' ? 'PDF' : 'image'} file(s)</span> loaded
                             </p>
                         )}
                     </div>
 
-                    {pdfFiles.length > 0 && (
+                    {fileCount > 0 && (
                         <>
                             {/* File Navigation */}
-                            {pdfFiles.length > 1 && (
+                            {fileCount > 1 && (
                                 <div className="bg-slate-800 p-4 rounded-xl shadow-lg">
                                     <div className="flex items-center gap-4">
                                         <button
@@ -360,12 +615,15 @@ const App: React.FC = () => {
                                             ← Previous
                                         </button>
                                         <div className="flex-1 text-center">
-                                            <p className="text-sm text-slate-400">File {currentFileIndex + 1} of {pdfFiles.length}</p>
-                                            <p className="font-semibold text-brand-400 truncate">{currentFile.file.name}</p>
+                                            <p className="text-sm text-slate-400">File {currentFileIndex + 1} of {fileCount}</p>
+                                            <p className="font-semibold text-brand-400 truncate">
+                                                {mode === 'pdf' && currentPdfFile ? currentPdfFile.file.name : ''}
+                                                {mode === 'image' && currentImageFile ? currentImageFile.file.name : ''}
+                                            </p>
                                         </div>
                                         <button
-                                            onClick={() => setCurrentFileIndex(Math.min(pdfFiles.length - 1, currentFileIndex + 1))}
-                                            disabled={currentFileIndex === pdfFiles.length - 1}
+                                            onClick={() => setCurrentFileIndex(Math.min(fileCount - 1, currentFileIndex + 1))}
+                                            disabled={currentFileIndex === fileCount - 1}
                                             className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
                                         >
                                             Next →
@@ -380,9 +638,10 @@ const App: React.FC = () => {
                                     <div className="flex-grow">
                                         <label htmlFor="rotation" className="block text-sm font-medium text-slate-300 mb-2">
                                             Rotation Angle: <span className="font-bold text-brand-400">{sliderValue.toFixed(2)}°</span>
-                                            {pagesForSlider.length > 0 ? (
+                                            {mode === 'pdf' && pagesForSlider.length > 0 && (
                                                 <span className="text-xs text-brand-400 ml-2">({pagesForSlider.length} page{pagesForSlider.length > 1 ? 's' : ''} selected)</span>
-                                            ) : (
+                                            )}
+                                            {mode === 'pdf' && pagesForSlider.length === 0 && (
                                                 <span className="text-xs text-slate-400 ml-2">(All pages)</span>
                                             )}
                                         </label>
@@ -408,22 +667,32 @@ const App: React.FC = () => {
                                     </div>
                                     <button
                                         onClick={() => {
-                                            if (!currentFile) return;
-                                            setPdfFiles(prev => {
-                                                const updated = [...prev];
-                                                const newRotations = { ...updated[currentFileIndex].rotations };
-                                                const pagesToReset = pagesForSlider.length > 0
-                                                    ? pagesForSlider
-                                                    : Object.keys(newRotations).map(Number);
-                                                pagesToReset.forEach(pageNum => {
-                                                    newRotations[pageNum] = 0;
+                                            if (mode === 'pdf' && currentPdfFile) {
+                                                setPdfFiles(prev => {
+                                                    const updated = [...prev];
+                                                    const newRotations = { ...updated[currentFileIndex].rotations };
+                                                    const pagesToReset = pagesForSlider.length > 0
+                                                        ? pagesForSlider
+                                                        : Object.keys(newRotations).map(Number);
+                                                    pagesToReset.forEach(pageNum => {
+                                                        newRotations[pageNum] = 0;
+                                                    });
+                                                    updated[currentFileIndex] = {
+                                                        ...updated[currentFileIndex],
+                                                        rotations: newRotations
+                                                    };
+                                                    return updated;
                                                 });
-                                                updated[currentFileIndex] = {
-                                                    ...updated[currentFileIndex],
-                                                    rotations: newRotations
-                                                };
-                                                return updated;
-                                            });
+                                            } else if (mode === 'image' && currentImageFile) {
+                                                setImageFiles(prev => {
+                                                    const updated = [...prev];
+                                                    updated[currentFileIndex] = {
+                                                        ...updated[currentFileIndex],
+                                                        rotation: 0
+                                                    };
+                                                    return updated;
+                                                });
+                                            }
                                             setSliderValue(0);
                                         }}
                                         className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold bg-slate-700 hover:bg-slate-600 rounded-md transition-colors w-full sm:w-auto"
@@ -432,54 +701,83 @@ const App: React.FC = () => {
                                     </button>
                                 </div>
                                 <div className="grid grid-cols-1 gap-4">
-                                    <button
-                                        onClick={handleSaveAll}
-                                        disabled={status === 'generating'}
-                                        className="flex items-center justify-center w-full px-4 py-3 font-semibold text-white bg-brand-600 rounded-md hover:bg-brand-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        <DownloadIcon className="h-5 w-5 mr-2" />
-                                        Save All {pdfFiles.length} PDF{pdfFiles.length > 1 ? 's' : ''}
-                                    </button>
+                                    {mode === 'pdf' ? (
+                                        <button
+                                            onClick={handleSavePdfs}
+                                            disabled={status === 'generating'}
+                                            className="flex items-center justify-center w-full px-4 py-3 font-semibold text-white bg-brand-600 rounded-md hover:bg-brand-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            <DownloadIcon className="h-5 w-5 mr-2" />
+                                            Save All {fileCount} PDF{fileCount > 1 ? 's' : ''}
+                                        </button>
+                                    ) : (
+                                        <>
+                                            <button
+                                                onClick={handleSaveImages}
+                                                disabled={status === 'generating'}
+                                                className="flex items-center justify-center w-full px-4 py-3 font-semibold text-white bg-brand-600 rounded-md hover:bg-brand-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                <DownloadIcon className="h-5 w-5 mr-2" />
+                                                Save All {fileCount} Image{fileCount > 1 ? 's' : ''}
+                                            </button>
+                                            <button
+                                                onClick={handleExportImagesToPdf}
+                                                disabled={status === 'generating'}
+                                                className="flex items-center justify-center w-full px-4 py-3 font-semibold text-white bg-slate-700 rounded-md hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                <DownloadIcon className="h-5 w-5 mr-2" />
+                                                Export as PDF
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             </div>
 
-                            {/* PDF Preview */}
-                            {currentFile && (
-                                <div className="bg-slate-800/50 rounded-xl overflow-hidden">
-                                    <div className="flex items-center justify-end p-4 bg-slate-800/80 border-b border-slate-700">
-                                        <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={showGuidelines}
-                                                onChange={(e) => setShowGuidelines(e.target.checked)}
-                                                className="w-4 h-4 accent-brand-500"
+                            {/* Preview */}
+                            <div className="bg-slate-800/50 rounded-xl overflow-hidden">
+                                <div className="flex items-center justify-end p-4 bg-slate-800/80 border-b border-slate-700">
+                                    <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={showGuidelines}
+                                            onChange={(e) => setShowGuidelines(e.target.checked)}
+                                            className="w-4 h-4 accent-brand-500"
+                                        />
+                                        Show Guidelines
+                                    </label>
+                                </div>
+                                <div
+                                    ref={scrollContainerRef}
+                                    className="p-4 overflow-auto max-h-[70vh]"
+                                >
+                                    <div className="space-y-4">
+                                        {mode === 'pdf' && currentPdfFile && Array.from({ length: currentPdfFile.pdfDoc.numPages }, (_, i) => (
+                                            <PdfPagePreview
+                                                key={i}
+                                                pdfDoc={currentPdfFile.pdfDoc}
+                                                pageNumber={i + 1}
+                                                rotation={currentPdfFile.rotations[i + 1] ?? 0}
+                                                isSelected={selectedPages.has(i + 1)}
+                                                onSelect={handleToggleSelect}
+                                                offset={currentPdfFile.offsets[i + 1] || { x: 0, y: 0 }}
+                                                onOffsetChange={handlePageOffsetChange}
+                                                onResetOffset={handleResetPageOffset}
+                                                showGuidelines={showGuidelines}
                                             />
-                                            Show Guidelines
-                                        </label>
-                                    </div>
-                                    <div
-                                        ref={scrollContainerRef}
-                                        className="p-4 overflow-auto max-h-[70vh]"
-                                    >
-                                        <div className="space-y-4">
-                                            {Array.from({ length: currentFile.pdfDoc.numPages }, (_, i) => (
-                                                <PdfPagePreview
-                                                    key={i}
-                                                    pdfDoc={currentFile.pdfDoc}
-                                                    pageNumber={i + 1}
-                                                    rotation={currentFile.rotations[i + 1] ?? 0}
-                                                    isSelected={selectedPages.has(i + 1)}
-                                                    onSelect={handleToggleSelect}
-                                                    offset={currentFile.offsets[i + 1] || { x: 0, y: 0 }}
-                                                    onOffsetChange={handlePageOffsetChange}
-                                                    onResetOffset={handleResetPageOffset}
-                                                    showGuidelines={showGuidelines}
-                                                />
-                                            ))}
-                                        </div>
+                                        ))}
+                                        {mode === 'image' && currentImageFile && (
+                                            <ImagePreview
+                                                imageUrl={currentImageFile.dataUrl}
+                                                rotation={currentImageFile.rotation}
+                                                offset={currentImageFile.offset}
+                                                onOffsetChange={handleImageOffsetChange}
+                                                onResetOffset={handleResetImageOffset}
+                                                showGuidelines={showGuidelines}
+                                            />
+                                        )}
                                     </div>
                                 </div>
-                            )}
+                            </div>
                         </>
                     )}
                 </main>
@@ -630,6 +928,133 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({ pdfDoc, pageNumber, rot
                         className="text-xs px-2 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-300"
                     >
                         Reset
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+};
+
+interface ImagePreviewProps {
+    imageUrl: string;
+    rotation: number;
+    offset: { x: number; y: number };
+    onOffsetChange: (deltaX: number, deltaY: number) => void;
+    onResetOffset: () => void;
+    showGuidelines: boolean;
+}
+
+const ImagePreview: React.FC<ImagePreviewProps> = ({ imageUrl, rotation, offset, onOffsetChange, onResetOffset, showGuidelines }) => {
+    const canvasRef = React.useRef<HTMLCanvasElement>(null);
+    const [isPanning, setIsPanning] = useState(false);
+    const [panStart, setPanStart] = useState<{ x: number; y: number } | null>(null);
+    const [imageSize, setImageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+
+    useEffect(() => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            const scale = Math.min(800 / img.width, 800 / img.height, 1.5);
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            setImageSize({ width: canvas.width, height: canvas.height });
+        };
+        img.src = imageUrl;
+    }, [imageUrl]);
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        if (e.button === 1) {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsPanning(true);
+            setPanStart({ x: e.clientX, y: e.clientY });
+        }
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (isPanning && panStart) {
+            e.preventDefault();
+            e.stopPropagation();
+            const deltaX = e.clientX - panStart.x;
+            const deltaY = e.clientY - panStart.y;
+            onOffsetChange(deltaX, deltaY);
+            setPanStart({ x: e.clientX, y: e.clientY });
+        }
+    };
+
+    const handleMouseUp = (e: React.MouseEvent) => {
+        if (e.button === 1) {
+            e.stopPropagation();
+            setIsPanning(false);
+            setPanStart(null);
+        }
+    };
+
+    const handleMouseLeave = () => {
+        if (isPanning) {
+            setIsPanning(false);
+            setPanStart(null);
+        }
+    };
+
+    return (
+        <div className="flex flex-col items-center">
+            <div
+                className="relative overflow-hidden border-4 border-slate-600 shadow-black/40 shadow-lg"
+                style={{
+                    width: imageSize.width || 'auto',
+                    height: imageSize.height || 'auto',
+                    cursor: isPanning ? 'grabbing' : 'grab'
+                }}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseLeave}
+            >
+                {showGuidelines && (
+                    <>
+                        <div
+                            className="absolute inset-0 pointer-events-none z-10"
+                            style={{
+                                backgroundImage: `
+                                    linear-gradient(to right, rgba(59, 130, 246, 0.2) 1px, transparent 1px),
+                                    linear-gradient(to bottom, rgba(59, 130, 246, 0.2) 1px, transparent 1px)
+                                `,
+                                backgroundSize: '20px 20px'
+                            }}
+                        />
+                        <div className="absolute top-0 left-1/2 w-0.5 h-full bg-red-500/40 pointer-events-none z-10" style={{ transform: 'translateX(-50%)' }} />
+                        <div className="absolute left-0 top-1/2 w-full h-0.5 bg-red-500/40 pointer-events-none z-10" style={{ transform: 'translateY(-50%)' }} />
+                    </>
+                )}
+                <div
+                    className="absolute"
+                    style={{
+                        transform: `translate(${offset.x}px, ${offset.y}px) rotate(${rotation}deg)`,
+                        transformOrigin: 'center center',
+                        left: '50%',
+                        top: '50%',
+                        marginLeft: -(imageSize.width / 2),
+                        marginTop: -(imageSize.height / 2)
+                    }}
+                >
+                    <canvas ref={canvasRef} />
+                </div>
+            </div>
+            <div className="flex items-center gap-2 mt-2">
+                <p className="text-xs text-slate-500">Rotation: {rotation.toFixed(2)}°</p>
+                {(offset.x !== 0 || offset.y !== 0) && (
+                    <button
+                        onClick={onResetOffset}
+                        className="text-xs px-2 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-300"
+                    >
+                        Reset Position
                     </button>
                 )}
             </div>
