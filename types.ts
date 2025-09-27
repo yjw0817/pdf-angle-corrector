@@ -51,5 +51,12 @@ export interface ImageFile {
 
 export type ExportFormat = 'pdf' | 'jpg' | 'png' | 'webp';
 
+export interface PdfFileData {
+  file: File;
+  pdfDoc: PdfDocument;
+  rotations: Record<number, number>;
+  offsets: Record<number, { x: number; y: number }>;
+}
+
 // This empty export ensures the file is treated as a module, which is required for 'declare global'.
 export {};
