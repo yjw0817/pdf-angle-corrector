@@ -276,15 +276,26 @@ Paying customers: 20-100
 ### For New Sessions
 When starting a new Claude Code session, always:
 
-1. **Check Current Phase** (top of this file)
-2. **Review Weekly Tasks** (Progress Tracker section)
-3. **Update Metrics** (if week has passed)
-4. **Consult Relevant Docs:**
-   - Development work → [AI_AUTO_DETECT.md](docs/AI_AUTO_DETECT.md)
-   - Deployment → [DEPLOYMENT.md](docs/DEPLOYMENT.md)
-   - Marketing → [MARKETING.md](docs/MARKETING.md)
-   - Pricing/Payment → [MONETIZATION.md](docs/MONETIZATION.md)
-   - Overall timeline → [ROADMAP.md](docs/ROADMAP.md)
+1. **Run `/init`** to load this file automatically
+2. **Check Current Phase** (top of this file)
+3. **Review Weekly Tasks** (Progress Tracker section)
+4. **Update Metrics** (if week has passed)
+5. **Consult [NEW_SESSION_GUIDE.md](docs/NEW_SESSION_GUIDE.md)** for prompts and workflows
+
+**Quick Start Commands:**
+```
+/init
+현재 진행 상황 확인하고 이번 주 할 일 알려줘
+```
+
+**Relevant Documents:**
+- New session help → [NEW_SESSION_GUIDE.md](docs/NEW_SESSION_GUIDE.md)
+- Development work → [AI_AUTO_DETECT.md](docs/AI_AUTO_DETECT.md)
+- Deployment → [DEPLOYMENT.md](docs/DEPLOYMENT.md)
+- Marketing → [MARKETING.md](docs/MARKETING.md)
+- Pricing/Payment → [MONETIZATION.md](docs/MONETIZATION.md)
+- Overall timeline → [ROADMAP.md](docs/ROADMAP.md)
+- Weekly tracking → [PROGRESS.md](docs/PROGRESS.md)
 
 ### Weekly Review Process
 
