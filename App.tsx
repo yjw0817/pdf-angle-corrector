@@ -99,7 +99,7 @@ const App: React.FC = () => {
         setStatusMessage('Generating corrected PDF...');
         try {
             const originalPdfBytes = await file.arrayBuffer();
-            const rotatedPdfBytes = await createRotatedPdf(originalPdfBytes, rotations);
+            const rotatedPdfBytes = await createRotatedPdf(originalPdfBytes, rotations, pageOffsets);
             const blob = new Blob([rotatedPdfBytes], { type: 'application/pdf' });
             const originalName = file.name.replace(/\.pdf$/i, '');
             const suggestedName = `${originalName}_corrected.pdf`;

@@ -5,9 +5,10 @@
  * arbitrary rotation that is compatible with pdf-lib v1.17.1.
  * @param originalPdfBytes - The ArrayBuffer of the original PDF file.
  * @param rotations - An object mapping page numbers (1-indexed) to the angle in degrees to rotate the page.
+ * @param offsets - An object mapping page numbers (1-indexed) to x,y offsets for positioning.
  * @returns A promise that resolves to a Uint8Array of the new, rotated PDF.
  */
-export const createRotatedPdf = async (originalPdfBytes: ArrayBuffer, rotations: Record<number, number>): Promise<Uint8Array> => {
+export const createRotatedPdf = async (originalPdfBytes: ArrayBuffer, rotations: Record<number, number>, offsets: Record<number, { x: number; y: number }> = {}): Promise<Uint8Array> => {
     try {
         const { PDFDocument, degrees } = PDFLib;
 
@@ -48,8 +49,13 @@ export const createRotatedPdf = async (originalPdfBytes: ArrayBuffer, rotations:
             const cosAngle = Math.cos(rotationAngleInRadians);
             const sinAngle = Math.sin(rotationAngleInRadians);
             
-            const x = (width / 2) - (width / 2) * cosAngle + (height / 2) * sinAngle;
-            const y = (height / 2) - (width / 2) * sinAngle - (height / 2) * cosAngle;
+            const baseX = (width / 2) - (width / 2) * cosAngle + (height / 2) * sinAngle;
+            const baseY = (height / 2) - (width / 2) * sinAngle - (height / 2) * cosAngle;
+
+            // Apply user offset (from middle-button drag)
+            const pageOffset = offsets[pageNumber] || { x: 0, y: 0 };
+            const x = baseX + pageOffset.x;
+            const y = baseY + pageOffset.y;
 
             // Draw the embedded page onto the new page with the calculated translation and rotation
             newPage.drawPage(embeddedPage, {
