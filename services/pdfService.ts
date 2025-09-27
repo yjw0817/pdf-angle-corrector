@@ -8,7 +8,12 @@
  * @param offsets - An object mapping page numbers (1-indexed) to x,y offsets for positioning.
  * @returns A promise that resolves to a Uint8Array of the new, rotated PDF.
  */
-export const createRotatedPdf = async (originalPdfBytes: ArrayBuffer, rotations: Record<number, number>, offsets: Record<number, { x: number; y: number }> = {}): Promise<Uint8Array> => {
+export const createRotatedPdf = async (
+    originalPdfBytes: ArrayBuffer,
+    rotations: Record<number, number>,
+    offsets: Record<number, { x: number; y: number }> = {},
+    flips: Record<number, { horizontal: boolean; vertical: boolean }> = {}
+): Promise<Uint8Array> => {
     try {
         const { PDFDocument, degrees } = PDFLib;
 
@@ -29,6 +34,7 @@ export const createRotatedPdf = async (originalPdfBytes: ArrayBuffer, rotations:
         pageIndices.forEach((pageIndex, i) => {
             const pageNumber = pageIndex + 1;
             const angle = rotations[pageNumber] || 0;
+            const flip = flips[pageNumber] || { horizontal: false, vertical: false };
 
             const originalPage = originalDoc.getPage(pageIndex);
             const embeddedPage = embeddedPages[i];
@@ -48,9 +54,14 @@ export const createRotatedPdf = async (originalPdfBytes: ArrayBuffer, rotations:
             // offsets to compensate for the rotation.
             const cosAngle = Math.cos(rotationAngleInRadians);
             const sinAngle = Math.sin(rotationAngleInRadians);
-            
-            const baseX = (width / 2) - (width / 2) * cosAngle + (height / 2) * sinAngle;
-            const baseY = (height / 2) - (width / 2) * sinAngle - (height / 2) * cosAngle;
+
+            // Base transformation for rotation
+            let baseX = (width / 2) - (width / 2) * cosAngle + (height / 2) * sinAngle;
+            let baseY = (height / 2) - (width / 2) * sinAngle - (height / 2) * cosAngle;
+
+            // Apply flip transformations by negating scale
+            const scaleX = flip.horizontal ? -1 : 1;
+            const scaleY = flip.vertical ? -1 : 1;
 
             // Apply user offset (from middle-button drag)
             // PDF coordinate system has Y-axis increasing upward, so negate Y offset
@@ -58,10 +69,12 @@ export const createRotatedPdf = async (originalPdfBytes: ArrayBuffer, rotations:
             const x = baseX + pageOffset.x;
             const y = baseY - pageOffset.y;
 
-            // Draw the embedded page onto the new page with the calculated translation and rotation
+            // Draw the embedded page onto the new page with the calculated translation, rotation, and flip
             newPage.drawPage(embeddedPage, {
                 x,
                 y,
+                xScale: scaleX,
+                yScale: scaleY,
                 rotate: degrees(rotationAngleInDegrees),
             });
         });

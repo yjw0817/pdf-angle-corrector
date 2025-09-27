@@ -242,7 +242,8 @@ const App: React.FC = () => {
                 const rotatedPdfBytes = await createRotatedPdf(
                     originalPdfBytes,
                     pdfFile.rotations,
-                    pdfFile.offsets
+                    pdfFile.offsets,
+                    pdfFile.flips
                 );
                 const blob = new Blob([rotatedPdfBytes], { type: 'application/pdf' });
 
@@ -292,12 +293,18 @@ const App: React.FC = () => {
             const rotations: Record<number, number> = {};
             const offsets: Record<number, { x: number; y: number }> = {};
 
+            const flips: Record<number, { horizontal: boolean; vertical: boolean }> = {};
+
             imageFiles.forEach((img, i) => {
                 rotations[i + 1] = img.rotation;
                 offsets[i + 1] = img.offset;
+                flips[i + 1] = {
+                    horizontal: img.flipHorizontal,
+                    vertical: img.flipVertical
+                };
             });
 
-            const pdfBytes = await createPdfFromImages(imageUrls, rotations, offsets);
+            const pdfBytes = await createPdfFromImages(imageUrls, rotations, offsets, flips);
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
 
             if ('showSaveFilePicker' in window) {
@@ -364,7 +371,9 @@ const App: React.FC = () => {
                     imageFile.dataUrl,
                     imageFile.rotation,
                     imageFile.offset,
-                    format === 'jpeg' ? 'jpg' : format
+                    format === 'jpeg' ? 'jpg' : format,
+                    imageFile.flipHorizontal,
+                    imageFile.flipVertical
                 );
 
                 const originalName = imageFile.file.name;

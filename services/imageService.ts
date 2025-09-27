@@ -4,7 +4,9 @@ export const rotateAndExportImage = async (
     imageUrl: string,
     rotation: number,
     offset: { x: number; y: number },
-    format: ExportFormat
+    format: ExportFormat,
+    flipHorizontal: boolean = false,
+    flipVertical: boolean = false
 ): Promise<Blob> => {
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -27,8 +29,9 @@ export const rotateAndExportImage = async (
             canvas.height = newHeight;
 
             // Apply transformations
-            // Screen Y-axis increases downward, but we need to negate Y offset for correct direction
+            // Order: translate to center -> flip -> rotate -> translate with offset
             ctx.translate(newWidth / 2, newHeight / 2);
+            ctx.scale(flipHorizontal ? -1 : 1, flipVertical ? -1 : 1);
             ctx.rotate(angle);
             ctx.translate(-img.width / 2 + offset.x, -img.height / 2 - offset.y);
             ctx.drawImage(img, 0, 0);
@@ -55,7 +58,8 @@ export const rotateAndExportImage = async (
 export const createPdfFromImages = async (
     imageUrls: string[],
     rotations: Record<number, number>,
-    offsets: Record<number, { x: number; y: number }>
+    offsets: Record<number, { x: number; y: number }>,
+    flips: Record<number, { horizontal: boolean; vertical: boolean }>
 ): Promise<Uint8Array> => {
     const { PDFDocument } = PDFLib;
     const pdfDoc = await PDFDocument.create();
@@ -64,9 +68,10 @@ export const createPdfFromImages = async (
         const pageNumber = i + 1;
         const rotation = rotations[pageNumber] || 0;
         const offset = offsets[pageNumber] || { x: 0, y: 0 };
+        const flip = flips[pageNumber] || { horizontal: false, vertical: false };
 
         // Create rotated image blob
-        const blob = await rotateAndExportImage(imageUrls[i], rotation, offset, 'png');
+        const blob = await rotateAndExportImage(imageUrls[i], rotation, offset, 'png', flip.horizontal, flip.vertical);
         const arrayBuffer = await blob.arrayBuffer();
         
         // Embed image in PDF
