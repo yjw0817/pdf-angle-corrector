@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import type { PdfDocument, PdfFileData, ImageFileData, AppMode } from './types';
 import { createRotatedPdf } from './services/pdfService';
-import { rotateAndExportImage, createPdfFromImages } from './services/imageService';
+import { rotateAndExportImage, createPdfFromImages, detectTiltAngle } from './services/imageService';
 import { UploadIcon, DownloadIcon, RotateCcwIcon, LoaderIcon } from './components/Icons';
 
 type Status = 'idle' | 'loading' | 'analyzing' | 'generating' | 'success' | 'error';
@@ -681,6 +681,99 @@ const App: React.FC = () => {
                                     </div>
                                 </div>
                             )}
+
+                            {/* AI Auto-Fix Button */}
+                            <div className="bg-slate-800 p-4 rounded-xl shadow-lg">
+                                <button
+                                    onClick={async () => {
+                                        setStatus('analyzing');
+                                        setStatusMessage('AI analyzing document angles...');
+
+                                        try {
+                                            if (mode === 'pdf' && currentPdfFile) {
+                                                const pagesToAnalyze = pagesForSlider.length > 0
+                                                    ? pagesForSlider
+                                                    : Array.from({ length: currentPdfFile.pdfDoc.numPages }, (_, i) => i + 1);
+
+                                                let analyzedCount = 0;
+                                                const newRotations = { ...currentPdfFile.rotations };
+
+                                                for (const pageNum of pagesToAnalyze) {
+                                                    const page = await currentPdfFile.pdfDoc.getPage(pageNum);
+                                                    const canvas = document.createElement('canvas');
+                                                    const ctx = canvas.getContext('2d');
+                                                    if (!ctx) continue;
+
+                                                    const viewport = page.getViewport({ scale: 1.5 });
+                                                    canvas.width = viewport.width;
+                                                    canvas.height = viewport.height;
+
+                                                    await page.render({ canvasContext: ctx, viewport }).promise;
+                                                    const imageUrl = canvas.toDataURL('image/png');
+
+                                                    const detectedAngle = await detectTiltAngle(imageUrl);
+                                                    newRotations[pageNum] = detectedAngle;
+                                                    analyzedCount++;
+
+                                                    setStatusMessage(`Analyzing... ${analyzedCount}/${pagesToAnalyze.length} pages`);
+                                                }
+
+                                                setPdfFiles(prev => {
+                                                    const updated = [...prev];
+                                                    updated[currentFileIndex] = {
+                                                        ...updated[currentFileIndex],
+                                                        rotations: newRotations
+                                                    };
+                                                    return updated;
+                                                });
+
+                                                setStatus('success');
+                                                setStatusMessage(`✨ Auto-corrected ${analyzedCount} page(s)!`);
+                                            } else if (mode === 'image' && currentImageFile) {
+                                                const detectedAngle = await detectTiltAngle(currentImageFile.url);
+
+                                                setImageFiles(prev => {
+                                                    const updated = [...prev];
+                                                    updated[currentFileIndex] = {
+                                                        ...updated[currentFileIndex],
+                                                        rotation: detectedAngle
+                                                    };
+                                                    return updated;
+                                                });
+
+                                                setStatus('success');
+                                                setStatusMessage('✨ Auto-corrected!');
+                                            }
+                                        } catch (error) {
+                                            console.error('Auto-fix error:', error);
+                                            setStatus('error');
+                                            setStatusMessage('Failed to auto-detect angle. Please adjust manually.');
+                                        } finally {
+                                            setTimeout(() => setStatus('idle'), 3000);
+                                        }
+                                    }}
+                                    className="w-full flex items-center justify-center gap-2 px-6 py-3 text-base font-semibold bg-gradient-to-r from-purple-600 to-brand-600 hover:from-purple-700 hover:to-brand-700 rounded-lg transition-all shadow-lg hover:shadow-xl"
+                                    disabled={status === 'analyzing'}
+                                >
+                                    {status === 'analyzing' ? (
+                                        <>
+                                            <LoaderIcon className="animate-spin h-5 w-5" />
+                                            AI Analyzing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            ✨ Auto-Fix with AI
+                                        </>
+                                    )}
+                                </button>
+                                <p className="text-xs text-slate-400 text-center mt-2">
+                                    {mode === 'pdf' && pagesForSlider.length > 0
+                                        ? `Will analyze ${pagesForSlider.length} selected page(s)`
+                                        : mode === 'pdf'
+                                        ? 'Will analyze all pages'
+                                        : 'Detect and correct text tilt automatically'}
+                                </p>
+                            </div>
 
                             {/* Rotation Controls */}
                             <div className="bg-slate-800 p-6 rounded-xl shadow-lg space-y-4">

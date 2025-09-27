@@ -20,6 +20,9 @@ declare global {
     };
     degrees: (angle: number) => number;
   };
+
+  // For OpenCV.js from https://docs.opencv.org/4.8.0/opencv.js
+  const cv: any;
 }
 
 export interface PdfDocument {
