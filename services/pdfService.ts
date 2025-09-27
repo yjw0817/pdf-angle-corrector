@@ -53,9 +53,10 @@ export const createRotatedPdf = async (originalPdfBytes: ArrayBuffer, rotations:
             const baseY = (height / 2) - (width / 2) * sinAngle - (height / 2) * cosAngle;
 
             // Apply user offset (from middle-button drag)
+            // PDF coordinate system has Y-axis increasing upward, so negate Y offset
             const pageOffset = offsets[pageNumber] || { x: 0, y: 0 };
             const x = baseX + pageOffset.x;
-            const y = baseY + pageOffset.y;
+            const y = baseY - pageOffset.y;
 
             // Draw the embedded page onto the new page with the calculated translation and rotation
             newPage.drawPage(embeddedPage, {

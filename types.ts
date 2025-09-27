@@ -42,5 +42,14 @@ export interface PdfViewport {
   height: number;
 }
 
+export type FileType = 'pdf' | 'image';
+
+export interface ImageFile {
+  file: File;
+  dataUrl: string;
+}
+
+export type ExportFormat = 'pdf' | 'jpg' | 'png' | 'webp';
+
 // This empty export ensures the file is treated as a module, which is required for 'declare global'.
 export {};
