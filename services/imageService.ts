@@ -40,15 +40,15 @@ const detectAngleFromTextBaselines = async (imageUrl: string): Promise<{ angle: 
     data.lines.forEach((line) => {
       if (!line.baseline || !line.bbox || !line.text) return;
 
-      // Skip very short lines (likely noise)
-      if (line.text.trim().length < 3) return;
+      // Skip very short text (likely noise)
+      if (line.text.trim().length < 2) return;
 
       const { x0, y0, x1, y1 } = line.bbox;
       const lineWidth = Math.abs(x1 - x0);
       const lineHeight = Math.abs(y1 - y0);
 
-      // Skip if line is too short or too tall (likely not horizontal text)
-      if (lineWidth < 50 || lineHeight > lineWidth / 2) return;
+      // Skip if too tall (likely vertical text or noise)
+      if (lineHeight > lineWidth) return;
 
       // Calculate angle from baseline
       const dx = x1 - x0;
@@ -61,8 +61,8 @@ const detectAngleFromTextBaselines = async (imageUrl: string): Promise<{ angle: 
       }
     });
 
-    if (angles.length < 3) {
-      // Not enough reliable text lines
+    if (angles.length < 2) {
+      // Not enough text lines
       return null;
     }
 
@@ -79,7 +79,7 @@ const detectAngleFromTextBaselines = async (imageUrl: string): Promise<{ angle: 
       confidence = 0.6; // Medium confidence
     }
 
-    const detectedAngle = -median(angles);
+    const detectedAngle = -findDominantAngle(angles);
     return { angle: detectedAngle, confidence };
 
   } catch (error) {
@@ -120,15 +120,21 @@ const detectAngleFromLines = async (imageUrl: string): Promise<{ angle: number; 
 
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
 
-        // Adaptive thresholding for better edge detection
-        cv.Canny(gray, edges, 50, 150, 3, false);
+        // Canny edge detection with lower thresholds for thin lines
+        cv.Canny(gray, edges, 30, 100, 3, false);
 
-        // HoughLinesP parameters:
-        // rho=1, theta=Math.PI/180 (1 degree), threshold=100 (votes needed)
-        // minLineLength=100 (longer lines more reliable), maxLineGap=20
-        cv.HoughLinesP(edges, lines, 1, Math.PI / 180, 100, 100, 20);
+        // HoughLinesP parameters (relaxed for receipts/forms):
+        // rho=1, theta=Math.PI/180, threshold=50 (less strict)
+        // minLineLength=50 (shorter lines ok), maxLineGap=10
+        cv.HoughLinesP(edges, lines, 1, Math.PI / 180, 50, 50, 10);
 
         const angles: number[] = [];
+        const imgWidth = canvas.width;
+        const imgHeight = canvas.height;
+
+        // Define margin to exclude border lines (5% from each edge)
+        const marginX = imgWidth * 0.05;
+        const marginY = imgHeight * 0.05;
 
         for (let i = 0; i < lines.rows; i++) {
           const x1 = lines.data32S[i * 4];
@@ -136,8 +142,19 @@ const detectAngleFromLines = async (imageUrl: string): Promise<{ angle: number; 
           const x2 = lines.data32S[i * 4 + 2];
           const y2 = lines.data32S[i * 4 + 3];
 
+          // Skip lines too close to image borders (likely border/background)
+          const nearBorder =
+            x1 < marginX || x2 < marginX || x1 > imgWidth - marginX || x2 > imgWidth - marginX ||
+            y1 < marginY || y2 < marginY || y1 > imgHeight - marginY || y2 > imgHeight - marginY;
+
+          if (nearBorder) continue;
+
           const dx = x2 - x1;
           const dy = y2 - y1;
+
+          // Skip very short lines (likely noise)
+          const lineLength = Math.sqrt(dx * dx + dy * dy);
+          if (lineLength < imgWidth * 0.1) continue; // At least 10% of image width
 
           // Calculate angle in degrees
           let angle = (Math.atan2(dy, dx) * 180) / Math.PI;
@@ -157,14 +174,14 @@ const detectAngleFromLines = async (imageUrl: string): Promise<{ angle: number; 
         edges.delete();
         lines.delete();
 
-        if (angles.length < 5) {
-          // Need at least 5 lines for reliable detection
+        if (angles.length < 3) {
+          // Need at least 3 lines for detection
           resolve(null);
           return;
         }
 
-        // Use median (more robust than mean)
-        const detectedAngle = -median(angles);
+        // Use dominant angle (most common angle via clustering)
+        const detectedAngle = -findDominantAngle(angles);
 
         // Calculate standard deviation for confidence
         const mean = angles.reduce((a, b) => a + b, 0) / angles.length;
@@ -182,6 +199,12 @@ const detectAngleFromLines = async (imageUrl: string): Promise<{ angle: number; 
         // Boost confidence with more lines
         if (angles.length > 20) {
           confidence = Math.min(0.95, confidence + 0.05);
+        }
+
+        // If angle is very small (< 0.5 degrees), it might be already straight
+        // Reduce confidence to allow fallback to text detection
+        if (Math.abs(detectedAngle) < 0.5) {
+          confidence = Math.min(confidence, 0.65);
         }
 
         resolve({ angle: detectedAngle, confidence });
@@ -336,6 +359,49 @@ const median = (values: number[]): number => {
   return sorted.length % 2 === 0
     ? (sorted[mid - 1] + sorted[mid]) / 2
     : sorted[mid];
+};
+
+/**
+ * Find the most common angle using clustering
+ * Groups similar angles together and returns the average of the largest group
+ */
+const findDominantAngle = (angles: number[]): number => {
+  if (angles.length === 0) return 0;
+  if (angles.length === 1) return angles[0];
+
+  // Sort angles for clustering
+  const sorted = [...angles].sort((a, b) => a - b);
+
+  // Cluster angles that are within 1 degree of each other
+  const clusters: number[][] = [];
+  let currentCluster: number[] = [sorted[0]];
+
+  for (let i = 1; i < sorted.length; i++) {
+    if (Math.abs(sorted[i] - sorted[i - 1]) <= 1.0) {
+      // Add to current cluster
+      currentCluster.push(sorted[i]);
+    } else {
+      // Start new cluster
+      clusters.push(currentCluster);
+      currentCluster = [sorted[i]];
+    }
+  }
+  clusters.push(currentCluster); // Don't forget last cluster
+
+  // Find the largest cluster (majority vote)
+  let largestCluster = clusters[0];
+  for (const cluster of clusters) {
+    if (cluster.length > largestCluster.length) {
+      largestCluster = cluster;
+    }
+  }
+
+  // Debug: log cluster info
+  console.log(`📊 Found ${clusters.length} angle clusters, largest has ${largestCluster.length}/${angles.length} angles`);
+
+  // Return the average of the largest cluster
+  const sum = largestCluster.reduce((a, b) => a + b, 0);
+  return sum / largestCluster.length;
 };
 
 export const rotateAndExportImage = async (

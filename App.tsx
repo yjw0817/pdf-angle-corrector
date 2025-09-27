@@ -703,23 +703,37 @@ const App: React.FC = () => {
                                                 const newRotations = { ...currentPdfFile.rotations };
 
                                                 for (const pageNum of pagesToAnalyze) {
-                                                    const page = await currentPdfFile.pdfDoc.getPage(pageNum);
-                                                    const canvas = document.createElement('canvas');
-                                                    const ctx = canvas.getContext('2d');
-                                                    if (!ctx) continue;
+                                                    try {
+                                                        const page = await currentPdfFile.pdfDoc.getPage(pageNum);
+                                                        const canvas = document.createElement('canvas');
+                                                        const ctx = canvas.getContext('2d');
+                                                        if (!ctx) continue;
 
-                                                    const viewport = page.getViewport({ scale: 1.5 });
-                                                    canvas.width = viewport.width;
-                                                    canvas.height = viewport.height;
+                                                        const viewport = page.getViewport({ scale: 1.5 });
+                                                        canvas.width = viewport.width;
+                                                        canvas.height = viewport.height;
 
-                                                    await page.render({ canvasContext: ctx, viewport }).promise;
-                                                    const imageUrl = canvas.toDataURL('image/png');
+                                                        // Render page to canvas
+                                                        const renderTask = page.render({ canvasContext: ctx, viewport });
+                                                        await renderTask.promise;
 
-                                                    const detectedAngle = await detectTiltAngle(imageUrl);
-                                                    newRotations[pageNum] = detectedAngle;
-                                                    analyzedCount++;
+                                                        // Convert to image
+                                                        const imageUrl = canvas.toDataURL('image/png');
 
-                                                    setStatusMessage(`Analyzing... ${analyzedCount}/${pagesToAnalyze.length} pages`);
+                                                        // Detect angle
+                                                        const detectedAngle = await detectTiltAngle(imageUrl);
+                                                        newRotations[pageNum] = detectedAngle;
+                                                        analyzedCount++;
+
+                                                        setStatusMessage(`Analyzing... ${analyzedCount}/${pagesToAnalyze.length} pages`);
+
+                                                        // Cleanup canvas
+                                                        canvas.width = 0;
+                                                        canvas.height = 0;
+                                                    } catch (error) {
+                                                        console.error(`Error analyzing page ${pageNum}:`, error);
+                                                        // Continue with next page
+                                                    }
                                                 }
 
                                                 setPdfFiles(prev => {
