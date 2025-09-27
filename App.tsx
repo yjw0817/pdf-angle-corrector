@@ -119,6 +119,20 @@ const App: React.FC = () => {
                     await writable.close();
                     setStatus('success');
                     setStatusMessage('File saved successfully!');
+                    
+                    // Reset all rotations and offsets to 0 (showing saved state)
+                    const resetRotations: Record<number, number> = {};
+                    const resetOffsets: Record<number, { x: number; y: number }> = {};
+                    if (pdfDoc) {
+                        for (let i = 1; i <= pdfDoc.numPages; i++) {
+                            resetRotations[i] = 0;
+                            resetOffsets[i] = { x: 0, y: 0 };
+                        }
+                    }
+                    setRotations(resetRotations);
+                    setPageOffsets(resetOffsets);
+                    setSliderValue(0);
+                    setSelectedPages(new Set());
                     return;
                 } catch (err: any) {
                     // User cancelled or error occurred
@@ -141,6 +155,20 @@ const App: React.FC = () => {
             URL.revokeObjectURL(url);
             setStatus('success');
             setStatusMessage('Download complete!');
+            
+            // Reset all rotations and offsets to 0 (showing saved state)
+            const resetRotations: Record<number, number> = {};
+            const resetOffsets: Record<number, { x: number; y: number }> = {};
+            if (pdfDoc) {
+                for (let i = 1; i <= pdfDoc.numPages; i++) {
+                    resetRotations[i] = 0;
+                    resetOffsets[i] = { x: 0, y: 0 };
+                }
+            }
+            setRotations(resetRotations);
+            setPageOffsets(resetOffsets);
+            setSliderValue(0);
+            setSelectedPages(new Set());
         } catch (error) {
             console.error("Error generating PDF:", error);
             setStatus('error');
@@ -327,24 +355,8 @@ const App: React.FC = () => {
                                 </div>
                                 <div 
                                     ref={scrollContainerRef}
-                                    className="relative p-4 overflow-auto max-h-[70vh]"
+                                    className="p-4 overflow-auto max-h-[70vh]"
                                 >
-                                    {showGuidelines && (
-                                        <>
-                                            <div 
-                                                className="absolute inset-0 pointer-events-none z-10"
-                                                style={{
-                                                    backgroundImage: `
-                                                        linear-gradient(to right, rgba(59, 130, 246, 0.2) 1px, transparent 1px),
-                                                        linear-gradient(to bottom, rgba(59, 130, 246, 0.2) 1px, transparent 1px)
-                                                    `,
-                                                    backgroundSize: '20px 20px'
-                                                }}
-                                            />
-                                            <div className="absolute top-0 left-1/2 w-0.5 h-full bg-red-500/40 pointer-events-none z-10" style={{ transform: 'translateX(-50%)' }} />
-                                            <div className="absolute left-0 top-1/2 w-full h-0.5 bg-red-500/40 pointer-events-none z-10" style={{ transform: 'translateY(-50%)' }} />
-                                        </>
-                                    )}
                                     <div className="space-y-4">
                                         {Array.from({ length: pdfDoc.numPages }, (_, i) => (
                                             <PdfPagePreview 
@@ -357,6 +369,7 @@ const App: React.FC = () => {
                                                 offset={pageOffsets[i + 1] || { x: 0, y: 0 }}
                                                 onOffsetChange={handlePageOffsetChange}
                                                 onResetOffset={handleResetPageOffset}
+                                                showGuidelines={showGuidelines}
                                             />
                                         ))}
                                     </div>
@@ -379,9 +392,10 @@ interface PdfPagePreviewProps {
     offset: { x: number; y: number };
     onOffsetChange: (pageNumber: number, deltaX: number, deltaY: number) => void;
     onResetOffset: (pageNumber: number) => void;
+    showGuidelines: boolean;
 }
 
-const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({ pdfDoc, pageNumber, rotation, isSelected, onSelect, offset, onOffsetChange, onResetOffset }) => {
+const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({ pdfDoc, pageNumber, rotation, isSelected, onSelect, offset, onOffsetChange, onResetOffset, showGuidelines }) => {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
     const [isPanning, setIsPanning] = useState(false);
     const [panStart, setPanStart] = useState<{ x: number; y: number } | null>(null);
@@ -470,6 +484,22 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({ pdfDoc, pageNumber, rot
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseLeave}
             >
+                {showGuidelines && (
+                    <>
+                        <div 
+                            className="absolute inset-0 pointer-events-none z-10"
+                            style={{
+                                backgroundImage: `
+                                    linear-gradient(to right, rgba(59, 130, 246, 0.2) 1px, transparent 1px),
+                                    linear-gradient(to bottom, rgba(59, 130, 246, 0.2) 1px, transparent 1px)
+                                `,
+                                backgroundSize: '20px 20px'
+                            }}
+                        />
+                        <div className="absolute top-0 left-1/2 w-0.5 h-full bg-red-500/40 pointer-events-none z-10" style={{ transform: 'translateX(-50%)' }} />
+                        <div className="absolute left-0 top-1/2 w-full h-0.5 bg-red-500/40 pointer-events-none z-10" style={{ transform: 'translateY(-50%)' }} />
+                    </>
+                )}
                 <div
                     className="absolute"
                     style={{ 
