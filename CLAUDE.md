@@ -2,9 +2,23 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🚀 Project Status & Current Phase
+
+**Current Status:** Ready for commercialization
+**Current Phase:** Pre-Launch (Planning)
+**Next Milestone:** AI Auto-Detection Implementation (Week 1-2)
+**Target Launch:** Week 5 (after AI feature completion)
+
+**Quick Links:**
+- [12-Week Roadmap](docs/ROADMAP.md) - Detailed execution plan
+- [Commercialization Strategy](docs/COMMERCIALIZATION.md) - Market analysis & revenue projections
+- [AI Feature Spec](docs/AI_AUTO_DETECT.md) - Killer feature implementation guide
+
 ## Project Overview
 
 This is a web-based PDF and image angle correction tool built with React 19, TypeScript, and Vite. It allows users to upload PDFs or images, apply precise rotation adjustments (±15°), reposition pages with middle-button drag, and export corrected files in multiple formats.
+
+**Core Value Proposition:** 100% client-side processing (privacy-first) with batch processing capabilities.
 
 ## Commands
 
@@ -83,3 +97,286 @@ The application uses React 19's `useState` for state management with these key s
 **Page Numbering:**
 - All page numbers are 1-indexed throughout the application
 - Maps/Records use page numbers (not array indices) as keys
+
+---
+
+## 📋 Commercialization Progress Tracker
+
+### Phase 1: MVP+ Development (Week 1-4)
+
+**Week 1: AI Auto-Detection Foundation**
+- [ ] Research Tesseract.js integration
+- [ ] Create `services/autoRotateService.ts`
+- [ ] Implement OCR text detection
+- [ ] Calculate tilt angle from OCR results
+- [ ] Test accuracy (target: >85%)
+- **Status:** Not Started
+- **Blockers:** None
+- **Next Action:** Install Tesseract.js and start prototyping
+
+**Week 2: AI Feature Integration & UI**
+- [ ] Add "Auto-Fix" button to UI
+- [ ] Implement batch auto-detection
+- [ ] Add progress indicator
+- [ ] Handle edge cases
+- [ ] Polish loading states
+- **Status:** Not Started
+- **Dependencies:** Week 1 completion
+
+**Week 3: Testing, Polish & Documentation**
+- [ ] User testing with 5 people
+- [ ] Fix critical bugs
+- [ ] Performance optimization
+- [ ] Create demo video (60 sec)
+- [ ] Prepare launch assets
+- **Status:** Not Started
+
+**Week 4: Deployment & Pre-Launch**
+- [ ] Vercel deployment
+- [ ] Custom domain setup
+- [ ] Analytics integration (Plausible)
+- [ ] SEO optimization
+- [ ] Legal pages (Privacy, Terms)
+- **Status:** Not Started
+
+### Phase 2: Launch & Validation (Week 5-8)
+
+**Week 5: Launch Week 🚀**
+- [ ] Reddit posts (r/selfhosted, r/productivity)
+- [ ] Hacker News Show HN
+- [ ] Product Hunt launch
+- [ ] Twitter announcement
+- **Target:** 5,000 visitors
+- **Status:** Not Started
+
+**Week 6: Feedback & Iteration**
+- [ ] Fix top 5 bugs
+- [ ] User interviews (5 people)
+- [ ] Survey: "Would you pay $5/mo?"
+- **Target:** NPS >40, "Would pay" >30%
+- **Status:** Not Started
+
+**Week 7: Content & SEO**
+- [ ] Write 2 SEO blog posts
+- [ ] Submit to directories (5+)
+- [ ] Create YouTube tutorial
+- **Status:** Not Started
+
+**Week 8: Go/No-Go Decision**
+- [ ] Evaluate metrics (traffic, NPS, willingness to pay)
+- [ ] Decision: PROCEED / DELAY / PIVOT
+- **Decision Date:** [To be determined]
+- **Status:** Not Started
+
+### Phase 3: Monetization & Growth (Week 9-12)
+
+**Week 9: Payment Integration**
+- [ ] Set up Stripe account
+- [ ] Implement checkout flow
+- [ ] User authentication
+- [ ] Feature gating (Free vs Pro)
+- **Status:** Not Started
+
+**Week 10: Soft Launch Pricing**
+- [ ] Create pricing page
+- [ ] Early Bird discount (50% off)
+- [ ] Email waitlist
+- **Target:** First 10 paying customers
+- **Status:** Not Started
+
+**Week 11: Marketing Acceleration**
+- [ ] Start Google Ads ($10/day)
+- [ ] Influencer outreach (10 contacts)
+- [ ] Launch referral program
+- **Status:** Not Started
+
+**Week 12: Growth & Optimization**
+- [ ] A/B test pricing page
+- [ ] Email drip campaign
+- [ ] Quarterly review
+- **Target:** MRR $100+
+- **Status:** Not Started
+
+---
+
+## 📊 Key Metrics Dashboard
+
+**Update this section weekly:**
+
+### Current Metrics (Week 0)
+```
+Traffic:
+- Total visitors: 0
+- Return visitors: 0
+- Bounce rate: N/A
+
+Engagement:
+- Files processed/day: 0
+- Email signups: 0
+- GitHub stars: [Check GitHub]
+
+Validation:
+- NPS: N/A
+- "Would pay?" survey: N/A
+- User feedback count: 0
+
+Revenue:
+- MRR: $0
+- Paying customers: 0
+- Churn rate: N/A
+
+Last Updated: 2025-01-27
+```
+
+### Target Metrics (Week 12)
+```
+Traffic: 20,000+ visitors (cumulative)
+NPS: >40
+Conversion: 0.5-1%
+MRR: $100-500
+Paying customers: 20-100
+```
+
+---
+
+## 🎯 Decision Points & Gates
+
+### Phase 1 Gate (Week 4)
+**Criteria to proceed to launch:**
+- ✅ AI feature accuracy >85%
+- ✅ Production deployment stable
+- ✅ Launch assets complete
+- ✅ Legal pages ready
+
+**If criteria not met:** Delay launch by 1 week
+
+### Phase 2 Gate (Week 8)
+**Criteria to proceed to monetization:**
+- ✅ 10,000+ visitors (cumulative)
+- ✅ NPS >30
+- ✅ "Would pay?" >20%
+
+**Decision Matrix:**
+- **PROCEED:** 2+ criteria met → Start payment integration
+- **DELAY:** 1 criteria met → Add features, retry in 4 weeks
+- **PIVOT:** 0 criteria met → Consider open source or pivot
+
+### Phase 3 Gate (Week 12)
+**Criteria for continued investment:**
+- ✅ MRR >$50
+- ✅ 10+ paying customers
+- ✅ Churn rate <20%
+
+**Decision:** Continue / Pause / Pivot
+
+---
+
+## 📖 Documentation Guide
+
+### For New Sessions
+When starting a new Claude Code session, always:
+
+1. **Check Current Phase** (top of this file)
+2. **Review Weekly Tasks** (Progress Tracker section)
+3. **Update Metrics** (if week has passed)
+4. **Consult Relevant Docs:**
+   - Development work → [AI_AUTO_DETECT.md](docs/AI_AUTO_DETECT.md)
+   - Deployment → [DEPLOYMENT.md](docs/DEPLOYMENT.md)
+   - Marketing → [MARKETING.md](docs/MARKETING.md)
+   - Pricing/Payment → [MONETIZATION.md](docs/MONETIZATION.md)
+   - Overall timeline → [ROADMAP.md](docs/ROADMAP.md)
+
+### Weekly Review Process
+
+**Every Monday, update:**
+1. Mark completed tasks with ✅
+2. Update "Current Phase" and "Next Milestone"
+3. Update metrics dashboard
+4. Identify blockers
+5. Set goals for current week
+
+**Template for weekly update:**
+```markdown
+## Week X Update (YYYY-MM-DD)
+
+Completed:
+- Task 1
+- Task 2
+
+In Progress:
+- Task 3 (50% done)
+
+Blockers:
+- Issue 1 (need X to resolve)
+
+Metrics:
+- Visitors: X
+- Signups: X
+- Revenue: $X
+
+Next Week Goals:
+- Goal 1
+- Goal 2
+```
+
+### Document Update Schedule
+
+| Document | Update Frequency | Owner |
+|----------|------------------|-------|
+| CLAUDE.md (this file) | Weekly | Always update |
+| ROADMAP.md | Monthly | Review milestones |
+| Metrics Dashboard (above) | Weekly | Track progress |
+| COMMERCIALIZATION.md | After Phase 2 Gate | Reassess strategy |
+| AI_AUTO_DETECT.md | After implementation | Document learnings |
+| DEPLOYMENT.md | As needed | After infrastructure changes |
+| MONETIZATION.md | After first customer | Adjust pricing if needed |
+| MARKETING.md | Monthly | Update channel performance |
+
+---
+
+## 🚨 Important Reminders
+
+### When Working on Features
+1. **Always check ROADMAP.md** for current week's priorities
+2. **Focus on Phase 1 (AI feature)** before marketing
+3. **Don't skip testing** - accuracy >85% is critical
+4. **Keep privacy-first** - no server upload, ever
+
+### When Making Decisions
+1. **Consult COMMERCIALIZATION.md** for strategic context
+2. **Check decision gates** before major changes
+3. **Update metrics** after any launch/marketing activity
+4. **Review ROI** before spending time/money
+
+### Red Flags (Stop and Reassess)
+- 🚩 Week 8: Metrics far below target (PIVOT consideration)
+- 🚩 Week 12: MRR <$50 (Business viability question)
+- 🚩 Any week: User feedback consistently negative (Product issue)
+- 🚩 Any week: Critical technical blocker (Scope down)
+
+---
+
+## 💡 Quick Reference
+
+### Current Priority
+**MOST IMPORTANT:** Implement AI auto-detection (Week 1-2)
+- This is the killer feature that justifies paid tier
+- 3x expected conversion rate increase
+- See [AI_AUTO_DETECT.md](docs/AI_AUTO_DETECT.md) for full spec
+
+### Success Definition
+**3-Month Goal:** MRR $100-500
+**6-Month Goal:** MRR $500-1,000
+**12-Month Goal:** MRR $1,000-3,000
+
+### Support Resources
+- Reddit: r/indiehackers, r/SideProject
+- Twitter: #buildinpublic community
+- Stripe documentation for payments
+- Vercel documentation for deployment
+
+---
+
+**Last Full Review:** 2025-01-27
+**Next Review Due:** 2025-02-03 (Week 1 completion)
+**Document Version:** 2.0
