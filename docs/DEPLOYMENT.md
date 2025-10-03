@@ -30,12 +30,12 @@ Pro ($20/mo):
 
 ### Alternative Platforms
 
-**Netlify** ⭐ Currently Using
+**Netlify**
 - Similar to Vercel
-- Better for forms/serverless functions
+- Better for built-in forms/serverless functions
 - 100GB bandwidth free tier
 - Excellent private repo support
-- Configuration: See `netlify.toml` in project root
+- **Decision:** Using Vercel instead (simpler for current needs)
 
 **Cloudflare Pages**
 - **Unlimited bandwidth** (best for high traffic)
@@ -53,62 +53,17 @@ Pro ($20/mo):
 
 ## Deployment Process
 
-### Netlify Deployment (Recommended for Private Repos)
+### Vercel Deployment (Currently Using) ⭐
 
-#### Step 1: Connect GitHub Repository
+**See detailed guide:** [VERCEL_DEPLOYMENT_GUIDE.md](./VERCEL_DEPLOYMENT_GUIDE.md)
 
-1. **Sign in to Netlify**: https://app.netlify.com
-2. **New site from Git**: Click "Add new site" → "Import an existing project"
-3. **Connect to GitHub**: Authorize Netlify to access your repositories
-4. **Select repository**: Choose your private repository
-5. **Grant access**: If prompted, grant Netlify access
+**Quick Summary:**
+1. Connect GitHub repository to Vercel
+2. Auto-detected Vite framework (zero config)
+3. Deploy to production (5 minutes)
+4. Optional: Add custom domain
 
-#### Step 2: Configure Build Settings
-
-Netlify auto-detects settings from `netlify.toml`:
-
-```yaml
-Build command: npm run build
-Publish directory: dist
-Node version: 18
-```
-
-**Environment Variables** (optional):
-- Add via: Site settings → Environment variables
-- `VITE_GA_TRACKING_ID` - Google Analytics ID
-
-#### Step 3: Deploy
-
-1. **Click "Deploy site"**: Build starts automatically
-2. **Wait for build**: 1-3 minutes
-3. **Check deploy logs**: Verify no errors
-4. **Visit site**: Generated URL (e.g., `https://random-name.netlify.app`)
-
-#### Step 4: Custom Domain (Optional)
-
-**Option A: Buy Domain** ($8-12/year)
-- Recommended: Namecheap, Cloudflare, Google Domains
-- Domain: `pdf-angle-corrector.com`
-
-**Option B: Use Netlify Subdomain** (Free)
-- URL: `https://pdf-angle-corrector.netlify.app`
-
-**Setting Up Custom Domain**:
-1. **In Netlify**: Site settings → Domain management → Add custom domain
-2. **Enter domain**: `pdf-angle-corrector.com`
-3. **Configure DNS**: Choose Netlify DNS (recommended) or external DNS
-4. **Wait for propagation**: 5 minutes to 48 hours (usually <1 hour)
-
-#### Step 5: Enable HTTPS
-
-1. **In Netlify**: Site settings → Domain management → HTTPS
-2. **Verify DNS**: Ensure domain is verified
-3. **Provision certificate**: Click "Verify DNS configuration"
-4. **Force HTTPS**: Enable "Force HTTPS redirect"
-
-**SSL Certificate**: Free Let's Encrypt (auto-renewed)
-
-#### Post-Deployment Checklist
+**Post-Deployment Checklist:**
 
 **SEO**:
 - [ ] Submit sitemap to Google Search Console: `https://pdf-angle-corrector.com/sitemap.xml`
@@ -130,7 +85,7 @@ Node version: 18
 
 ---
 
-### Initial Setup (Vercel)
+### Vercel CLI Setup (Alternative Method)
 
 ```bash
 # 1. Install Vercel CLI
