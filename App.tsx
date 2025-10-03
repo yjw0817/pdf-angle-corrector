@@ -689,8 +689,111 @@ const App: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* AI Auto-Fix Button */}
-                            <div className="bg-slate-800 p-4 rounded-xl shadow-lg">
+                            {/* AI Auto-Fix Buttons */}
+                            <div className="bg-slate-800 p-4 rounded-xl shadow-lg space-y-3">
+                                {/* Fix All Files Button (when multiple files) */}
+                                {fileCount > 1 && (
+                                    <button
+                                        onClick={async () => {
+                                            setStatus('analyzing');
+                                            setStatusMessage('AI analyzing all files...');
+
+                                            try {
+                                                if (mode === 'pdf') {
+                                                    // Process all PDF files
+                                                    for (let fileIdx = 0; fileIdx < pdfFiles.length; fileIdx++) {
+                                                        const pdfFile = pdfFiles[fileIdx];
+                                                        setStatusMessage(`Analyzing file ${fileIdx + 1}/${pdfFiles.length}...`);
+
+                                                        const newRotations = { ...pdfFile.rotations };
+                                                        const totalPages = pdfFile.pdfDoc.numPages;
+
+                                                        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+                                                            try {
+                                                                // Render page to temp canvas for analysis
+                                                                const page = await pdfFile.pdfDoc.getPage(pageNum);
+                                                                const viewport = page.getViewport({ scale: 1.5 });
+                                                                const tempCanvas = document.createElement('canvas');
+                                                                const ctx = tempCanvas.getContext('2d');
+                                                                if (!ctx) continue;
+
+                                                                tempCanvas.width = viewport.width;
+                                                                tempCanvas.height = viewport.height;
+
+                                                                // Join render queue
+                                                                const renderTask = pdfRenderQueue.then(async () => {
+                                                                    await page.render({ canvasContext: ctx, viewport }).promise;
+                                                                });
+                                                                pdfRenderQueue = renderTask;
+                                                                await renderTask;
+
+                                                                const imageUrl = tempCanvas.toDataURL('image/png');
+                                                                const detectedAngle = await detectTiltAngle(imageUrl);
+                                                                newRotations[pageNum] = detectedAngle;
+
+                                                                setStatusMessage(`File ${fileIdx + 1}/${pdfFiles.length}, Page ${pageNum}/${totalPages}`);
+                                                            } catch (error) {
+                                                                console.error(`Error analyzing file ${fileIdx + 1}, page ${pageNum}:`, error);
+                                                            }
+                                                        }
+
+                                                        setPdfFiles(prev => {
+                                                            const updated = [...prev];
+                                                            updated[fileIdx] = {
+                                                                ...updated[fileIdx],
+                                                                rotations: newRotations
+                                                            };
+                                                            return updated;
+                                                        });
+                                                    }
+
+                                                    setStatus('success');
+                                                    setStatusMessage(`✨ Auto-corrected ${pdfFiles.length} file(s)!`);
+                                                } else if (mode === 'image') {
+                                                    // Process all image files
+                                                    for (let fileIdx = 0; fileIdx < imageFiles.length; fileIdx++) {
+                                                        const imageFile = imageFiles[fileIdx];
+                                                        setStatusMessage(`Analyzing image ${fileIdx + 1}/${imageFiles.length}...`);
+
+                                                        const detectedAngle = await detectTiltAngle(imageFile.url);
+
+                                                        setImageFiles(prev => {
+                                                            const updated = [...prev];
+                                                            updated[fileIdx] = {
+                                                                ...updated[fileIdx],
+                                                                rotation: detectedAngle
+                                                            };
+                                                            return updated;
+                                                        });
+                                                    }
+
+                                                    setStatus('success');
+                                                    setStatusMessage(`✨ Auto-corrected ${imageFiles.length} image(s)!`);
+                                                }
+
+                                                setTimeout(() => {
+                                                    setStatus('idle');
+                                                    setStatusMessage('');
+                                                }, 3000);
+                                            } catch (error) {
+                                                console.error('Error during batch auto-fix:', error);
+                                                setStatus('error');
+                                                setStatusMessage('Error analyzing files. Please try again.');
+                                                setTimeout(() => {
+                                                    setStatus('idle');
+                                                    setStatusMessage('');
+                                                }, 3000);
+                                            }
+                                        }}
+                                        disabled={status === 'analyzing' || status === 'generating'}
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-slate-600 disabled:to-slate-600 disabled:cursor-not-allowed rounded-lg transition-all shadow-lg"
+                                    >
+                                        <span className="text-xl">✨</span>
+                                        <span>Auto-Fix All {fileCount} Files with AI</span>
+                                    </button>
+                                )}
+
+                                {/* Fix Current File Button */}
                                 <button
                                     onClick={async () => {
                                         setStatus('analyzing');
@@ -788,15 +891,15 @@ const App: React.FC = () => {
                                         </>
                                     ) : (
                                         <>
-                                            ✨ Auto-Fix with AI
+                                            ✨ Auto-Fix {fileCount > 1 ? 'Current File' : 'with AI'}
                                         </>
                                     )}
                                 </button>
                                 <p className="text-xs text-slate-400 text-center mt-2">
                                     {mode === 'pdf' && pagesForSlider.length > 0
-                                        ? `Will analyze ${pagesForSlider.length} selected page(s)`
+                                        ? `Will analyze ${pagesForSlider.length} selected page(s) in current file`
                                         : mode === 'pdf'
-                                        ? 'Will analyze all pages'
+                                        ? 'Will analyze all pages in current file'
                                         : 'Detect and correct text tilt automatically'}
                                 </p>
                             </div>
@@ -984,7 +1087,7 @@ const App: React.FC = () => {
                                     <div className="space-y-4">
                                         {mode === 'pdf' && currentPdfFile && Array.from({ length: currentPdfFile.pdfDoc.numPages }, (_, i) => (
                                             <PdfPagePreview
-                                                key={i}
+                                                key={`file-${currentFileIndex}-page-${i}`}
                                                 pdfDoc={currentPdfFile.pdfDoc}
                                                 pageNumber={i + 1}
                                                 rotation={currentPdfFile.rotations[i + 1] ?? 0}
@@ -1040,9 +1143,26 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({ pdfDoc, pageNumber, rot
     const [isPanning, setIsPanning] = useState(false);
     const [panStart, setPanStart] = useState<{ x: number; y: number } | null>(null);
     const [canvasSize, setCanvasSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+    const [isRendering, setIsRendering] = useState(true);
 
     useEffect(() => {
         const renderPage = async () => {
+            setIsRendering(true);
+
+            // Clear previous canvas content immediately
+            const canvas = canvasRef.current;
+            if (canvas) {
+                const context = canvas.getContext('2d');
+                if (context) {
+                    context.clearRect(0, 0, canvas.width, canvas.height);
+                    canvas.width = 0;
+                    canvas.height = 0;
+                }
+            }
+
+            // Small delay to prevent blocking on initial load
+            await new Promise(resolve => setTimeout(resolve, pageNumber * 50));
+
             // Join the global render queue to prevent concurrent renders
             const myRenderTask = pdfRenderQueue.then(async () => {
                 const page = await pdfDoc.getPage(pageNumber);
@@ -1059,6 +1179,10 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({ pdfDoc, pageNumber, rot
 
                 await page.render({ canvasContext: context, viewport: viewport }).promise;
                 setCanvasSize({ width: canvas.width, height: canvas.height });
+
+                // Small delay to ensure canvas is fully rendered before showing
+                await new Promise(resolve => setTimeout(resolve, 50));
+                setIsRendering(false);
             });
 
             // Update the global queue to wait for this render
@@ -1124,7 +1248,17 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({ pdfDoc, pageNumber, rot
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseLeave}
             >
-                {showGuidelines && (
+                {/* Loading overlay while rendering */}
+                {isRendering && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-slate-900/90 z-30 rounded-lg">
+                        <div className="flex flex-col items-center gap-2">
+                            <LoaderIcon className="h-8 w-8 animate-spin text-brand-500" />
+                            <span className="text-sm text-slate-400">Loading page {pageNumber}...</span>
+                        </div>
+                    </div>
+                )}
+
+                {showGuidelines && !isRendering && (
                     <>
                         <div
                             className="absolute inset-0 pointer-events-none z-10"
