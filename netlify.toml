@@ -1,0 +1,75 @@
+# Netlify configuration for PDF Angle Corrector
+# https://docs.netlify.com/configure-builds/file-based-configuration/
+
+[build]
+  # Build command
+  command = "npm run build"
+
+  # Output directory (Vite builds to dist/)
+  publish = "dist"
+
+  # Node.js version
+  environment = { NODE_VERSION = "18" }
+
+# Redirect rules for SPA (Single Page Application)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
+
+# Security headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Prevent clickjacking
+    X-Frame-Options = "DENY"
+
+    # XSS protection
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+
+    # Content Security Policy (allow CDN resources)
+    Content-Security-Policy = """
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval'
+        https://cdnjs.cloudflare.com
+        https://unpkg.com
+        https://docs.opencv.org
+        https://cdn.jsdelivr.net
+        https://www.googletagmanager.com
+        https://www.google-analytics.com;
+      style-src 'self' 'unsafe-inline'
+        https://cdn.jsdelivr.net;
+      img-src 'self' data: blob:
+        https://www.google-analytics.com;
+      font-src 'self' data:;
+      connect-src 'self'
+        https://www.google-analytics.com
+        https://analytics.google.com;
+      worker-src 'self' blob:;
+    """
+
+    # Referrer policy
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+    # Permissions policy
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+# Cache control for static assets
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Cache control for service worker
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Custom 404 page (optional, for future use)
+# [[redirects]]
+#   from = "/404"
+#   to = "/404.html"
+#   status = 404
