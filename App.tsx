@@ -757,9 +757,174 @@ const App: React.FC = () => {
                                         </button>
                                     )}
                                 </div>
+
+                                {/* Save Buttons - Inside document name panel */}
+                                <div className="mt-4 grid grid-cols-1 gap-3">
+                                    {mode === 'pdf' ? (
+                                        <button
+                                            onClick={handleSavePdfs}
+                                            disabled={status === 'generating'}
+                                            className="flex items-center justify-center w-full px-4 py-3 font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            <DownloadIcon className="h-5 w-5 mr-2" />
+                                            Save All {fileCount} PDF{fileCount > 1 ? 's' : ''}
+                                        </button>
+                                    ) : (
+                                        <>
+                                            <button
+                                                onClick={handleSaveImages}
+                                                disabled={status === 'generating'}
+                                                className="flex items-center justify-center w-full px-4 py-3 font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                <DownloadIcon className="h-5 w-5 mr-2" />
+                                                Save All {fileCount} Image{fileCount > 1 ? 's' : ''}
+                                            </button>
+                                            <button
+                                                onClick={handleExportImagesToPdf}
+                                                disabled={status === 'generating'}
+                                                className="flex items-center justify-center w-full px-4 py-3 font-semibold text-white bg-slate-700 rounded-md hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                <DownloadIcon className="h-5 w-5 mr-2" />
+                                                Export as PDF
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
                             </div>
 
-                            {/* AI Auto-Fix Buttons */}
+                            {/* Rotation Controls */}
+                            <div className="bg-slate-800 p-6 rounded-xl shadow-lg space-y-4">
+                                {/* Quick Rotation Buttons */}
+                                <div className="space-y-3">
+                                    <div className="flex flex-wrap gap-2">
+                                        <button
+                                            onClick={() => handleRotationChange(90)}
+                                            className="px-3 py-1.5 text-sm font-semibold bg-slate-700 hover:bg-slate-600 rounded-md transition-colors"
+                                        >
+                                            ↻ 90°
+                                        </button>
+                                        <button
+                                            onClick={() => handleRotationChange(180)}
+                                            className="px-3 py-1.5 text-sm font-semibold bg-slate-700 hover:bg-slate-600 rounded-md transition-colors"
+                                        >
+                                            ↻ 180°
+                                        </button>
+                                        <button
+                                            onClick={() => handleRotationChange(270)}
+                                            className="px-3 py-1.5 text-sm font-semibold bg-slate-700 hover:bg-slate-600 rounded-md transition-colors"
+                                        >
+                                            ↻ 270°
+                                        </button>
+                                        <button
+                                            onClick={() => handleRotationChange(-90)}
+                                            className="px-3 py-1.5 text-sm font-semibold bg-slate-700 hover:bg-slate-600 rounded-md transition-colors"
+                                        >
+                                            ↺ 90°
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <input
+                                            type="number"
+                                            placeholder="Custom angle"
+                                            className="px-3 py-1.5 text-sm bg-slate-700 text-slate-100 rounded-md border border-slate-600 focus:border-blue-500 focus:outline-none w-32"
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    const value = parseFloat((e.target as HTMLInputElement).value);
+                                                    if (!isNaN(value)) {
+                                                        handleRotationChange(value);
+                                                        (e.target as HTMLInputElement).value = '';
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                        <span className="text-xs text-slate-400 self-center">Press Enter to apply</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <button
+                                            onClick={() => handleFlip('horizontal')}
+                                            className="px-3 py-1.5 text-sm font-semibold bg-slate-700 hover:bg-slate-600 rounded-md transition-colors"
+                                        >
+                                            ↔ Flip Horizontal
+                                        </button>
+                                        <button
+                                            onClick={() => handleFlip('vertical')}
+                                            className="px-3 py-1.5 text-sm font-semibold bg-slate-700 hover:bg-slate-600 rounded-md transition-colors"
+                                        >
+                                            ↕ Flip Vertical
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Angle Slider - After Flip buttons */}
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-4 sm:space-y-0">
+                                    <div className="flex-grow">
+                                        <label htmlFor="rotation" className="block text-sm font-medium text-slate-300 mb-2">
+                                            Rotation Angle: <span className="font-bold text-blue-400">{sliderValue.toFixed(2)}°</span>
+                                            {mode === 'pdf' && pagesForSlider.length > 0 && (
+                                                <span className="text-xs text-blue-400 ml-2">({pagesForSlider.length} page{pagesForSlider.length > 1 ? 's' : ''} selected)</span>
+                                            )}
+                                            {mode === 'pdf' && pagesForSlider.length === 0 && (
+                                                <span className="text-xs text-slate-400 ml-2">(All pages)</span>
+                                            )}
+                                        </label>
+                                        <div className="flex items-center space-x-3">
+                                            <span className="text-xs text-slate-400">-15°</span>
+                                            <input
+                                                id="rotation"
+                                                type="range"
+                                                min="-15"
+                                                max="15"
+                                                step="0.05"
+                                                value={sliderValue}
+                                                onChange={(e) => {
+                                                    const newValue = parseFloat(e.target.value);
+                                                    const delta = newValue - sliderValue;
+                                                    setSliderValue(newValue);
+                                                    handleRotationChange(delta);
+                                                }}
+                                                className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                            />
+                                            <span className="text-xs text-slate-400">+15°</span>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            if (mode === 'pdf' && currentPdfFile) {
+                                                setPdfFiles(prev => {
+                                                    const updated = [...prev];
+                                                    const newRotations = { ...updated[currentFileIndex].rotations };
+                                                    const pagesToReset = pagesForSlider.length > 0
+                                                        ? pagesForSlider
+                                                        : Object.keys(newRotations).map(Number);
+                                                    pagesToReset.forEach(pageNum => {
+                                                        newRotations[pageNum] = 0;
+                                                    });
+                                                    updated[currentFileIndex] = {
+                                                        ...updated[currentFileIndex],
+                                                        rotations: newRotations
+                                                    };
+                                                    return updated;
+                                                });
+                                            } else if (mode === 'image' && currentImageFile) {
+                                                setImageFiles(prev => {
+                                                    const updated = [...prev];
+                                                    updated[currentFileIndex] = {
+                                                        ...updated[currentFileIndex],
+                                                        rotation: 0
+                                                    };
+                                                    return updated;
+                                                });
+                                            }
+                                            setSliderValue(0);
+                                        }}
+                                        className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold bg-slate-700 hover:bg-slate-600 rounded-md transition-colors w-full sm:w-auto"
+                                    >
+                                        <RotateCcwIcon className="h-4 w-4" /> Reset
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* AI Auto-Fix Buttons - After slider */}
                             <div className="bg-slate-800 p-4 rounded-xl shadow-lg space-y-3">
                                 {/* Fix All Files Button (when multiple files) */}
                                 {fileCount > 1 && (
@@ -978,169 +1143,6 @@ const App: React.FC = () => {
                                         ? 'Will analyze all pages in current file'
                                         : 'Detect and correct text tilt automatically'}
                                 </p>
-                            </div>
-
-                            {/* Rotation Controls */}
-                            <div className="bg-slate-800 p-6 rounded-xl shadow-lg space-y-4">
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-4 sm:space-y-0">
-                                    <div className="flex-grow">
-                                        <label htmlFor="rotation" className="block text-sm font-medium text-slate-300 mb-2">
-                                            Rotation Angle: <span className="font-bold text-blue-400">{sliderValue.toFixed(2)}°</span>
-                                            {mode === 'pdf' && pagesForSlider.length > 0 && (
-                                                <span className="text-xs text-blue-400 ml-2">({pagesForSlider.length} page{pagesForSlider.length > 1 ? 's' : ''} selected)</span>
-                                            )}
-                                            {mode === 'pdf' && pagesForSlider.length === 0 && (
-                                                <span className="text-xs text-slate-400 ml-2">(All pages)</span>
-                                            )}
-                                        </label>
-                                        <div className="flex items-center space-x-3">
-                                            <span className="text-xs text-slate-400">-15°</span>
-                                            <input
-                                                id="rotation"
-                                                type="range"
-                                                min="-15"
-                                                max="15"
-                                                step="0.05"
-                                                value={sliderValue}
-                                                onChange={(e) => {
-                                                    const newValue = parseFloat(e.target.value);
-                                                    const delta = newValue - sliderValue;
-                                                    setSliderValue(newValue);
-                                                    handleRotationChange(delta);
-                                                }}
-                                                className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                                            />
-                                            <span className="text-xs text-slate-400">+15°</span>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => {
-                                            if (mode === 'pdf' && currentPdfFile) {
-                                                setPdfFiles(prev => {
-                                                    const updated = [...prev];
-                                                    const newRotations = { ...updated[currentFileIndex].rotations };
-                                                    const pagesToReset = pagesForSlider.length > 0
-                                                        ? pagesForSlider
-                                                        : Object.keys(newRotations).map(Number);
-                                                    pagesToReset.forEach(pageNum => {
-                                                        newRotations[pageNum] = 0;
-                                                    });
-                                                    updated[currentFileIndex] = {
-                                                        ...updated[currentFileIndex],
-                                                        rotations: newRotations
-                                                    };
-                                                    return updated;
-                                                });
-                                            } else if (mode === 'image' && currentImageFile) {
-                                                setImageFiles(prev => {
-                                                    const updated = [...prev];
-                                                    updated[currentFileIndex] = {
-                                                        ...updated[currentFileIndex],
-                                                        rotation: 0
-                                                    };
-                                                    return updated;
-                                                });
-                                            }
-                                            setSliderValue(0);
-                                        }}
-                                        className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold bg-slate-700 hover:bg-slate-600 rounded-md transition-colors w-full sm:w-auto"
-                                    >
-                                        <RotateCcwIcon className="h-4 w-4" /> Reset
-                                    </button>
-                                </div>
-
-                                {/* Quick Rotation Buttons */}
-                                <div className="space-y-3">
-                                    <div className="flex flex-wrap gap-2">
-                                        <button
-                                            onClick={() => handleRotationChange(90)}
-                                            className="px-3 py-1.5 text-sm font-semibold bg-slate-700 hover:bg-slate-600 rounded-md transition-colors"
-                                        >
-                                            ↻ 90°
-                                        </button>
-                                        <button
-                                            onClick={() => handleRotationChange(180)}
-                                            className="px-3 py-1.5 text-sm font-semibold bg-slate-700 hover:bg-slate-600 rounded-md transition-colors"
-                                        >
-                                            ↻ 180°
-                                        </button>
-                                        <button
-                                            onClick={() => handleRotationChange(270)}
-                                            className="px-3 py-1.5 text-sm font-semibold bg-slate-700 hover:bg-slate-600 rounded-md transition-colors"
-                                        >
-                                            ↻ 270°
-                                        </button>
-                                        <button
-                                            onClick={() => handleRotationChange(-90)}
-                                            className="px-3 py-1.5 text-sm font-semibold bg-slate-700 hover:bg-slate-600 rounded-md transition-colors"
-                                        >
-                                            ↺ 90°
-                                        </button>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        <input
-                                            type="number"
-                                            placeholder="Custom angle"
-                                            className="px-3 py-1.5 text-sm bg-slate-700 text-slate-100 rounded-md border border-slate-600 focus:border-blue-500 focus:outline-none w-32"
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter') {
-                                                    const value = parseFloat((e.target as HTMLInputElement).value);
-                                                    if (!isNaN(value)) {
-                                                        handleRotationChange(value);
-                                                        (e.target as HTMLInputElement).value = '';
-                                                    }
-                                                }
-                                            }}
-                                        />
-                                        <span className="text-xs text-slate-400 self-center">Press Enter to apply</span>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        <button
-                                            onClick={() => handleFlip('horizontal')}
-                                            className="px-3 py-1.5 text-sm font-semibold bg-slate-700 hover:bg-slate-600 rounded-md transition-colors"
-                                        >
-                                            ↔ Flip Horizontal
-                                        </button>
-                                        <button
-                                            onClick={() => handleFlip('vertical')}
-                                            className="px-3 py-1.5 text-sm font-semibold bg-slate-700 hover:bg-slate-600 rounded-md transition-colors"
-                                        >
-                                            ↕ Flip Vertical
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 gap-4">
-                                    {mode === 'pdf' ? (
-                                        <button
-                                            onClick={handleSavePdfs}
-                                            disabled={status === 'generating'}
-                                            className="flex items-center justify-center w-full px-4 py-3 font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            <DownloadIcon className="h-5 w-5 mr-2" />
-                                            Save All {fileCount} PDF{fileCount > 1 ? 's' : ''}
-                                        </button>
-                                    ) : (
-                                        <>
-                                            <button
-                                                onClick={handleSaveImages}
-                                                disabled={status === 'generating'}
-                                                className="flex items-center justify-center w-full px-4 py-3 font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                            >
-                                                <DownloadIcon className="h-5 w-5 mr-2" />
-                                                Save All {fileCount} Image{fileCount > 1 ? 's' : ''}
-                                            </button>
-                                            <button
-                                                onClick={handleExportImagesToPdf}
-                                                disabled={status === 'generating'}
-                                                className="flex items-center justify-center w-full px-4 py-3 font-semibold text-white bg-slate-700 rounded-md hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                            >
-                                                <DownloadIcon className="h-5 w-5 mr-2" />
-                                                Export as PDF
-                                            </button>
-                                        </>
-                                    )}
-                                </div>
                             </div>
 
                             {/* Preview */}

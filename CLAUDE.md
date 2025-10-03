@@ -4,17 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 🚀 Project Status & Current Phase
 
-**Current Status:** ✅ Week 1 Complete - Monetization Strategy Finalized
-**Current Phase:** Week 2 - SEO, Deployment & Beta Preparation
-**Next Milestone:** Netlify deployment + SEO optimization → Week 5 Beta Launch
+**Current Status:** ✅ Week 2 Complete - Performance Optimization 100점 달성!
+**Current Phase:** Week 3 - Content Creation & Marketing Preparation
+**Next Milestone:** Demo video + Reddit launch post → Week 5 Beta Launch
 **Target Launch:** Week 13 (May 2025) - Free Plan (10/month) + Pro ($5/month)
 
-**✅ CRITICAL BUG FIXED:**
-- **Previous Error:** `pdf.min.js:22 Uncaught (in promise) Error: Cannot use the same canvas during multiple render() operations`
-- **Root Cause:** Multiple PdfPagePreview components rendering simultaneously
-- **Solution:** Global render queue (`pdfRenderQueue = Promise.resolve()`) with promise chaining
-- **Additional Fixes:** Staggered rendering (50ms delays), loading states, unique React keys
-- **Status:** ✅ RESOLVED - All canvas conflicts eliminated
+**🏆 WEEK 2 성과:**
+- ✅ **Lighthouse 100점 달성** (Performance: 34→100, +66점!)
+- ✅ **Tailwind PostCSS 전환** (3.4MB→14.8KB, 99% 감소)
+- ✅ **Lazy Loading 구현** (OpenCV.js, PDF.js, pdf-lib)
+- ✅ **성능 지표 개선:**
+  - FCP: 7.1s → 1.3s (81% 개선)
+  - LCP: 8.1s → 1.3s (84% 개선)
+  - TBT: 1,290ms → 60ms (95% 개선)
+- ✅ **AI Auto-Fix 콘솔 버그 수정** (timeout 보호 추가)
 
 **📊 Business Model (Finalized):**
 - **Free Plan:** 10 adjustments/month, max 50 pages/file, single file only
