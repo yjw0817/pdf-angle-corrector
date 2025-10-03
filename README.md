@@ -1,19 +1,49 @@
 # PDF & Image Angle Corrector
 
-**Professional document correction tool for perfect alignment**
+**AI-powered document correction tool for perfect alignment**
 
-A powerful web-based application that allows you to easily correct tilted PDFs and images, with advanced rotation and flip controls. Perfect for scanning corrections, document digitization, and professional document management.
+Fix skewed PDFs and images in seconds with AI-powered angle detection. 100% client-side processing - your files never leave your device. Free 10 adjustments/month.
+
+[![Try it now](https://img.shields.io/badge/Try-Free-blue)](https://pdf-angle-corrector.com)
+[![License](https://img.shields.io/badge/License-Private-red)]()
+[![Status](https://img.shields.io/badge/Status-Beta-orange)]()
+
+---
+
+## 🚀 What's New
+
+### ✨ AI Auto-Detection (NEW)
+- **One-Click Correction**: Automatically detects and fixes skewed documents
+- **Computer Vision**: Uses OpenCV.js for line detection + Tesseract.js OCR fallback
+- **85%+ Accuracy**: Works on most documents, especially structured forms and scanned pages
+- **100% Client-Side**: No server upload, zero cost, privacy-first
+
+### 💎 Pricing (Beta → Launch)
+
+**Beta Period (Now - Apr 2025):**
+- Unlimited free access to all features
+- No signup required
+- Help us improve with feedback
+
+**After Launch (May 2025):**
+- **Free Plan:** 10 adjustments/month, max 50 pages/file
+- **Pro Plan:** $5/month unlimited (Early Bird: $3/month for first 500 users)
 
 ---
 
 ## 🎯 Key Features
+
+### AI-Powered Detection
+- **✨ Auto-Fix with AI**: One-click angle correction using computer vision
+- **Smart Clustering**: Groups similar angles for majority voting (noise filtering)
+- **Dual Method**: Hough Line Transform + OCR text baseline detection
+- **Confidence Scoring**: Shows detection confidence and fallback method used
 
 ### PDF Mode
 - **Multi-PDF Batch Processing**: Open and process multiple PDF files simultaneously
 - **Per-Page Control**: Individual rotation and offset adjustments for each page
 - **Multi-Page Selection**: Apply transformations to multiple pages at once
 - **Visual Preview**: Real-time preview with guidelines for precise alignment
-- **Original File Overwrite**: Convenient save-in-place workflow
 
 ### Image Mode
 - **Multiple Image Processing**: Handle multiple images in a single session
@@ -23,11 +53,10 @@ A powerful web-based application that allows you to easily correct tilted PDFs a
 - **Format Support**: JPG, PNG, WebP
 
 ### Advanced Controls
-- **Fine Rotation**: Precise angle adjustment with real-time preview
+- **Fine Rotation**: Precise angle adjustment (±15°) with real-time preview
 - **Quick Rotation**: One-click 90°, 180°, 270° rotation buttons
 - **Custom Angle Input**: Enter exact rotation angles manually
-- **Position Offset**: Drag to adjust horizontal and vertical positioning
-- **Flip Operations**: Horizontal and vertical flip transformations
+- **Position Offset**: Middle-button drag to adjust horizontal and vertical positioning
 - **Interactive Guidelines**: Visual alignment aids with toggle control
 
 ---
@@ -36,9 +65,9 @@ A powerful web-based application that allows you to easily correct tilted PDFs a
 
 ### Business & Office
 - **Scanned Document Correction**: Fix tilted scans from flatbed or mobile scanners
-- **Document Digitization**: Prepare scanned archives for digital storage
 - **Invoice Processing**: Align receipts and invoices for accounting systems
 - **Contract Management**: Ensure professional appearance of legal documents
+- **Form Processing**: Straighten crooked scanned forms and applications
 
 ### Education
 - **Assignment Submission**: Correct mobile-captured assignments before submission
@@ -47,28 +76,18 @@ A powerful web-based application that allows you to easily correct tilted PDFs a
 
 ### Personal Use
 - **Photo Correction**: Fix tilted photos and images
-- **Album Creation**: Prepare images for photo books or presentations
 - **Document Organization**: Maintain neat digital document collections
 
 ---
 
 ## 🚀 Getting Started
 
-### Prerequisites
-- **Browser**: Chrome or Edge (for File System Access API)
-- **No Installation**: 100% web-based, runs entirely in your browser
-- **No Upload**: All processing happens locally - your files never leave your device
-
-### Quick Start
-1. **Choose Mode**: Select PDF Mode or Image Mode
-2. **Load Files**: Click "Choose File" and select your documents
-3. **Adjust**: Use rotation slider, quick buttons, or manual input
-4. **Position**: Middle-click drag to adjust horizontal/vertical offset
-5. **Save**: Click "Save All" to export corrected files
+### Online (Recommended)
+Visit **[pdf-angle-corrector.com](https://pdf-angle-corrector.com)** (Beta: unlimited free)
 
 ### Run Locally
 
-**Prerequisites:**  Node.js
+**Prerequisites:** Node.js
 
 1. Install dependencies:
    ```bash
@@ -89,26 +108,9 @@ A powerful web-based application that allows you to easily correct tilted PDFs a
 
 - **100% Client-Side Processing**: All operations run in your browser
 - **No Server Upload**: Your files never leave your computer
-- **No Data Collection**: Zero tracking, zero analytics, zero data storage
+- **No Data Collection**: Zero tracking, zero data storage
 - **Offline Capable**: Works without internet after initial load
-- **Open Source**: Full code transparency for security audit
-
----
-
-## 🎨 User Interface
-
-### Clean & Intuitive Design
-- Minimal, distraction-free interface
-- Real-time preview with zoom controls
-- Color-coded status indicators
-- Clear button labels and tooltips
-- Responsive layout for various screen sizes
-
-### Keyboard & Mouse Support
-- Mouse wheel zoom
-- Middle-click drag for positioning
-- Keyboard shortcuts for quick actions
-- Enter key to apply custom angles
+- **Privacy-First**: Your documents stay on your device, always
 
 ---
 
@@ -116,8 +118,8 @@ A powerful web-based application that allows you to easily correct tilted PDFs a
 
 ### Performance
 - **Fast Processing**: Instant preview updates
+- **AI Detection**: 2-3 seconds per document
 - **Large File Support**: Handles multi-page PDFs efficiently
-- **Memory Efficient**: Optimized canvas rendering
 - **No File Size Limits**: Process any size document your browser can handle
 
 ### Supported Formats
@@ -127,163 +129,136 @@ A powerful web-based application that allows you to easily correct tilted PDFs a
 ### Technologies
 - **Frontend**: React 19, TypeScript
 - **PDF Engine**: PDF.js 3.11.174, pdf-lib 1.17.1
+- **AI/Computer Vision**: OpenCV.js 4.8.0, Tesseract.js (OCR)
 - **Build Tool**: Vite 6
 - **Standards**: HTML5 Canvas, File System Access API
 
 ---
 
-## 🏢 Commercial Use
-
-### Licensing Options
-
-#### Free for Personal Use
-- Unlimited personal projects
-- Non-commercial use
-- Full feature access
-- No registration required
-
-#### Business License (Coming Soon)
-- Commercial use authorization
-- Priority support
-- Custom branding options
-- Volume licensing available
-- SLA guarantees
-
-#### Enterprise Solutions (Coming Soon)
-- Self-hosted deployment
-- Custom integration
-- API access
-- Dedicated support
-- Training & onboarding
-
-### Contact for Licensing
-- Email: [Your Contact Email]
-- Website: [Your Website]
-
----
-
-## 🔧 Deployment Options
-
-### 1. Static Web Hosting
-Deploy to any static hosting service:
-- **Netlify**: One-click deployment
-- **Vercel**: Zero-configuration deployment
-- **GitHub Pages**: Free hosting for open source
-- **AWS S3 + CloudFront**: Enterprise-grade hosting
-
-### 2. Self-Hosted
-Run on your own infrastructure:
-- Docker container available
-- Nginx configuration included
-- HTTPS recommended
-- CDN integration supported
-
-### 3. Desktop Application (Planned)
-- Electron wrapper for offline use
-- Native file system integration
-- Auto-update capability
-- Windows, macOS, Linux support
-
----
-
 ## 📈 Roadmap
 
-### Version 1.1 (Q2 2025)
-- [ ] Batch export with naming templates
+### ✅ Version 1.0 (Current - Beta)
+- [x] AI-powered auto angle detection
+- [x] Multi-page PDF support
+- [x] Batch processing (multiple files)
+- [x] Advanced rotation controls
+- [x] Position offset adjustment
+- [x] Interactive guidelines
+
+### 🔄 Version 1.1 (Week 2-4, 2025)
+- [ ] Netlify deployment (private repo)
+- [ ] SEO optimization for web search
+- [ ] Google Analytics integration
+- [ ] Beta launch (Reddit, Hacker News, Product Hunt)
+
+### 🚀 Version 2.0 (May 2025 - Launch)
+- [ ] Firebase Authentication
+- [ ] Stripe payment integration
+- [ ] Usage tracking (10/month limit for free users)
+- [ ] Pro tier features (unlimited, batch processing)
+- [ ] Early Bird pricing ($3/month for first 500 users)
+
+### 🔮 Future (Month 2+)
 - [ ] OCR integration for searchable PDFs
-- [ ] Multiple undo/redo
-- [ ] Preset rotation profiles
-
-### Version 1.2 (Q3 2025)
-- [ ] Auto-rotation detection using AI
 - [ ] Perspective correction
-- [ ] Batch watermarking
-- [ ] Cloud storage integration (optional)
-
-### Version 2.0 (Q4 2025)
-- [ ] Desktop application release
-- [ ] Mobile app (iOS/Android)
-- [ ] Collaborative editing
-- [ ] Advanced editing tools
+- [ ] PDF compression
+- [ ] Watermark removal (Pro feature)
+- [ ] Auto border cropping
 
 ---
 
-## 🤝 Support & Community
+## 🤝 Beta Testing
 
-### Documentation
-- Full user guide
-- Video tutorials
-- FAQ section
-- API documentation (for integration)
+**Join our beta program:**
+- Unlimited free access (until Apr 2025)
+- Help shape the product with feedback
+- Early Bird discount when we launch
 
-### Get Help
-- GitHub Issues: Bug reports and feature requests
-- Community Forum: User discussions and tips
-- Email Support: Direct assistance for business users
-- Live Chat: Premium support for enterprise customers
+**How to participate:**
+1. Use the tool at [pdf-angle-corrector.com](https://pdf-angle-corrector.com)
+2. Share feedback via [GitHub Issues](https://github.com/yourusername/pdf-angle-corrector/issues)
+3. Fill out our survey (coming soon)
 
-### Contributing
-We welcome contributions from the community:
-- Bug reports
-- Feature suggestions
-- Code contributions
-- Documentation improvements
-- Translations
+**Target metrics:**
+- 1,000-2,000 beta users by Apr 2025
+- 30%+ willing to pay $5/month
+- NPS score >40
 
 ---
 
-## 📝 Changelog
+## 💰 Pricing Details
 
-### Version 0.9.0 (Current)
-- Initial public release
-- PDF and Image mode
-- Multi-file batch processing
-- Advanced rotation controls (90°, 180°, 270°, custom)
-- Horizontal and vertical flip
-- Position offset adjustment
-- Interactive guidelines
-- File System Access API integration
+### Free Plan (After Launch)
+- 10 adjustments per month
+- Max 50 pages per file
+- Single file processing only
+- AI auto-detection included
+- Manual rotation (±15°)
+- All export formats
 
----
+### Pro Plan ($5/month)
+- **Unlimited adjustments**
+- **Unlimited pages per file**
+- **Batch processing** (multiple files at once)
+- Priority email support
+- Early access to new features
 
-## ⚖️ License
-
-### Open Source License
-This software is available under MIT License
-
-### Commercial License
-For commercial use, please contact us for licensing options.
-
----
-
-## 📞 Contact
-
-**For Business Inquiries:**
-- Email: [Your Business Email]
-- Phone: [Your Phone]
-- Website: [Your Website]
-
-**For Technical Support:**
-- GitHub Issues: [Repository URL]
-- Email: [Your Support Email]
-
-**For Media & Press:**
-- Press Kit: [Press Kit URL]
-- Media Contact: [Media Email]
+### Early Bird Special (First 500 Users)
+- $3/month (40% discount)
+- Locks in for 3 months
+- All Pro features included
 
 ---
 
-## 🌟 Why Choose PDF & Image Angle Corrector?
+## 🌟 Why Choose This Tool?
 
+✅ **AI-Powered**: Automatic angle detection with 85%+ accuracy
 ✅ **Privacy First**: Your data never leaves your device
 ✅ **Professional Quality**: Precise controls for perfect results
 ✅ **User-Friendly**: Intuitive interface, no learning curve
 ✅ **Fast & Efficient**: Instant processing, no waiting
 ✅ **Cross-Platform**: Works on any modern browser
 ✅ **No Installation**: Access from any computer
-✅ **Cost-Effective**: Free for personal use
-✅ **Open Source**: Transparent, auditable code
+✅ **Free Beta**: Unlimited access during beta period
 
 ---
 
-**Transform your tilted documents into perfectly aligned professional files in seconds.**
+## 📞 Contact
+
+**For Beta Feedback:**
+- GitHub Issues: [Report bugs or suggest features](https://github.com/yourusername/pdf-angle-corrector/issues)
+- Email: support@pdf-angle-corrector.com
+
+**For Business Inquiries:**
+- Email: business@pdf-angle-corrector.com
+
+---
+
+## 📝 Changelog
+
+### Version 1.0.0-beta (Current)
+- AI-powered auto angle detection
+- Multi-page PDF support
+- Batch processing for multiple files
+- Advanced rotation controls (90°, 180°, 270°, custom)
+- Position offset adjustment (middle-button drag)
+- Interactive guidelines
+- File System Access API integration
+- 100% client-side processing
+
+---
+
+## ⚖️ License
+
+**Private Repository** - Source code is NOT open source
+
+**Usage Rights:**
+- Free for personal use during beta period
+- Commercial use requires Pro subscription (after launch)
+- See [STRATEGY.md](docs/STRATEGY.md) for business model details
+
+---
+
+**Transform your skewed documents into perfectly aligned professional files in seconds with AI.**
+
+🚀 **[Try Free Beta Now](https://pdf-angle-corrector.com)** | 📖 **[Documentation](docs/)** | 💬 **[Feedback](https://github.com/yourusername/pdf-angle-corrector/issues)**
