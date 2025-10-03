@@ -6,6 +6,9 @@ import { UploadIcon, DownloadIcon, RotateCcwIcon, LoaderIcon } from './component
 
 type Status = 'idle' | 'loading' | 'analyzing' | 'generating' | 'success' | 'error';
 
+// Global PDF render queue to prevent concurrent render operations
+let pdfRenderQueue = Promise.resolve();
+
 const StatusIndicator: React.FC<{ status: Status; message: string }> = ({ status, message }) => {
     if (status === 'idle') return null;
 
@@ -702,23 +705,31 @@ const App: React.FC = () => {
                                                 let analyzedCount = 0;
                                                 const newRotations = { ...currentPdfFile.rotations };
 
+                                                // Use already rendered preview canvases instead of re-rendering
                                                 for (const pageNum of pagesToAnalyze) {
                                                     try {
-                                                        const page = await currentPdfFile.pdfDoc.getPage(pageNum);
-                                                        const canvas = document.createElement('canvas');
-                                                        const ctx = canvas.getContext('2d');
-                                                        if (!ctx) continue;
+                                                        setStatusMessage(`Analyzing page ${pageNum}/${pagesToAnalyze.length}...`);
 
-                                                        const viewport = page.getViewport({ scale: 1.5 });
-                                                        canvas.width = viewport.width;
-                                                        canvas.height = viewport.height;
+                                                        // Find the preview canvas that's already rendered
+                                                        const previewCanvases = document.querySelectorAll('canvas');
+                                                        let sourceCanvas: HTMLCanvasElement | null = null;
 
-                                                        // Render page to canvas
-                                                        const renderTask = page.render({ canvasContext: ctx, viewport });
-                                                        await renderTask.promise;
+                                                        // Find the canvas for this page number
+                                                        for (const canvas of Array.from(previewCanvases)) {
+                                                            const pageIndex = Array.from(previewCanvases).indexOf(canvas);
+                                                            if (pageIndex + 1 === pageNum) {
+                                                                sourceCanvas = canvas;
+                                                                break;
+                                                            }
+                                                        }
 
-                                                        // Convert to image
-                                                        const imageUrl = canvas.toDataURL('image/png');
+                                                        if (!sourceCanvas || sourceCanvas.width === 0) {
+                                                            console.warn(`Canvas for page ${pageNum} not found or not rendered`);
+                                                            continue;
+                                                        }
+
+                                                        // Convert existing canvas to image URL
+                                                        const imageUrl = sourceCanvas.toDataURL('image/png');
 
                                                         // Detect angle
                                                         const detectedAngle = await detectTiltAngle(imageUrl);
@@ -727,9 +738,6 @@ const App: React.FC = () => {
 
                                                         setStatusMessage(`Analyzing... ${analyzedCount}/${pagesToAnalyze.length} pages`);
 
-                                                        // Cleanup canvas
-                                                        canvas.width = 0;
-                                                        canvas.height = 0;
                                                     } catch (error) {
                                                         console.error(`Error analyzing page ${pageNum}:`, error);
                                                         // Continue with next page
@@ -987,6 +995,7 @@ const App: React.FC = () => {
                                                 onOffsetChange={handlePageOffsetChange}
                                                 onResetOffset={handleResetPageOffset}
                                                 showGuidelines={showGuidelines}
+                                                isAnalyzing={status === 'analyzing'}
                                             />
                                         ))}
                                         {mode === 'image' && currentImageFile && (
@@ -1023,9 +1032,10 @@ interface PdfPagePreviewProps {
     onOffsetChange: (pageNumber: number, deltaX: number, deltaY: number) => void;
     onResetOffset: (pageNumber: number) => void;
     showGuidelines: boolean;
+    isAnalyzing: boolean;
 }
 
-const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({ pdfDoc, pageNumber, rotation, isSelected, onSelect, offset, flip, onOffsetChange, onResetOffset, showGuidelines }) => {
+const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({ pdfDoc, pageNumber, rotation, isSelected, onSelect, offset, flip, onOffsetChange, onResetOffset, showGuidelines, isAnalyzing }) => {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
     const [isPanning, setIsPanning] = useState(false);
     const [panStart, setPanStart] = useState<{ x: number; y: number } | null>(null);
@@ -1033,20 +1043,29 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({ pdfDoc, pageNumber, rot
 
     useEffect(() => {
         const renderPage = async () => {
-            const page = await pdfDoc.getPage(pageNumber);
-            const scale = 1.5;
-            const viewport = page.getViewport({ scale });
-            const canvas = canvasRef.current;
-            if (!canvas) return;
+            // Join the global render queue to prevent concurrent renders
+            const myRenderTask = pdfRenderQueue.then(async () => {
+                const page = await pdfDoc.getPage(pageNumber);
+                const scale = 1.5;
+                const viewport = page.getViewport({ scale });
+                const canvas = canvasRef.current;
+                if (!canvas) return;
 
-            const context = canvas.getContext('2d');
-            if (!context) return;
+                const context = canvas.getContext('2d');
+                if (!context) return;
 
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
 
-            page.render({ canvasContext: context, viewport: viewport });
-            setCanvasSize({ width: canvas.width, height: canvas.height });
+                await page.render({ canvasContext: context, viewport: viewport }).promise;
+                setCanvasSize({ width: canvas.width, height: canvas.height });
+            });
+
+            // Update the global queue to wait for this render
+            pdfRenderQueue = myRenderTask;
+
+            // Wait for this render to complete
+            await myRenderTask;
         };
 
         renderPage();

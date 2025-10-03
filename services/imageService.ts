@@ -412,13 +412,13 @@ const findDominantAngle = (angles: number[]): number => {
   // Sort angles for clustering
   const sorted = [...angles].sort((a, b) => a - b);
 
-  // Cluster angles that are within 1 degree of each other
+  // Cluster angles that are within 0.3 degree of each other (tighter for precision)
   const clusters: number[][] = [];
   let currentCluster: number[] = [sorted[0]];
 
   for (let i = 1; i < sorted.length; i++) {
-    if (Math.abs(sorted[i] - sorted[i - 1]) <= 1.0) {
-      // Add to current cluster
+    if (Math.abs(sorted[i] - sorted[i - 1]) <= 0.3) {
+      // Add to current cluster (0.3 degree threshold for 0.5 degree Hough resolution)
       currentCluster.push(sorted[i]);
     } else {
       // Start new cluster
