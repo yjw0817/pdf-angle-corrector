@@ -438,7 +438,18 @@ const findDominantAngle = (angles: number[]): number => {
   // Debug: log cluster info
   console.log(`📊 Found ${clusters.length} angle clusters, largest has ${largestCluster.length}/${angles.length} angles`);
 
-  // Return the average of the largest cluster
+  // Use trimmed mean (remove outliers from both ends)
+  // Remove 20% from each end, use middle 60% for more accurate average
+  if (largestCluster.length >= 5) {
+    const trimCount = Math.floor(largestCluster.length * 0.2);
+    const trimmed = largestCluster.slice(trimCount, largestCluster.length - trimCount);
+    const sum = trimmed.reduce((a, b) => a + b, 0);
+    const trimmedMean = sum / trimmed.length;
+    console.log(`📐 Trimmed mean: ${trimmedMean.toFixed(3)}° (removed ${trimCount} from each end)`);
+    return trimmedMean;
+  }
+
+  // For small clusters, use simple average
   const sum = largestCluster.reduce((a, b) => a + b, 0);
   return sum / largestCluster.length;
 };
