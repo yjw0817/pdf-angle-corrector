@@ -15,11 +15,17 @@ const loadOpenCV = (): Promise<void> => {
     // Check if already loading
     const existingScript = document.querySelector('script[src*="opencv.js"]');
     if (existingScript) {
-      // Wait for it to load
+      // Wait for it to load with timeout
+      let attempts = 0;
+      const maxAttempts = 100; // 10 seconds max (100ms * 100)
       const checkInterval = setInterval(() => {
+        attempts++;
         if (typeof cv !== 'undefined' && cv.Mat) {
           clearInterval(checkInterval);
           resolve();
+        } else if (attempts >= maxAttempts) {
+          clearInterval(checkInterval);
+          reject(new Error('OpenCV.js loading timeout (already loading)'));
         }
       }, 100);
       return;
@@ -29,16 +35,26 @@ const loadOpenCV = (): Promise<void> => {
     const script = document.createElement('script');
     script.src = 'https://docs.opencv.org/4.8.0/opencv.js';
     script.async = true;
+
+    let attempts = 0;
+    const maxAttempts = 100; // 10 seconds max
+
     script.onload = () => {
-      console.log('OpenCV.js loaded (lazy)');
-      // Wait a bit for cv to be fully initialized
+      console.log('OpenCV.js script loaded, waiting for cv initialization...');
+      // Wait for cv to be fully initialized with timeout
       const checkInterval = setInterval(() => {
+        attempts++;
         if (typeof cv !== 'undefined' && cv.Mat) {
           clearInterval(checkInterval);
+          console.log('OpenCV.js fully initialized');
           resolve();
+        } else if (attempts >= maxAttempts) {
+          clearInterval(checkInterval);
+          reject(new Error('OpenCV.js initialization timeout'));
         }
       }, 100);
     };
+
     script.onerror = () => reject(new Error('Failed to load OpenCV.js'));
     document.head.appendChild(script);
   });
