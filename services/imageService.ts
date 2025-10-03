@@ -26,8 +26,45 @@ const detectAngleFromTextBaselines = async (imageUrl: string): Promise<{ angle: 
   let worker: Worker | null = null;
 
   try {
-    worker = await createWorker(['eng', 'kor'], 1);
-    const { data } = await worker.recognize(imageUrl);
+    // Convert image URL to canvas (Tesseract.js works better with canvas/image elements)
+    const canvas = await new Promise<HTMLCanvasElement>((resolve, reject) => {
+      const img = new Image();
+
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Failed to get canvas context'));
+            return;
+          }
+          ctx.drawImage(img, 0, 0);
+          resolve(canvas);
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      img.onerror = (error) => {
+        console.error('Image load error:', error);
+        console.error('Image URL:', imageUrl);
+        reject(new Error('Failed to load image'));
+      };
+
+      // For blob URLs, no crossOrigin needed
+      // For data URLs, no crossOrigin needed
+      // Only set crossOrigin for external URLs
+      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+        img.crossOrigin = 'anonymous';
+      }
+
+      img.src = imageUrl;
+    });
+
+    worker = await createWorker('eng');
+    const { data } = await worker.recognize(canvas);
 
     // Type assertion: Tesseract.js Page type doesn't have proper TypeScript definitions
     // We need to cast to unknown first, then to our custom type
@@ -350,6 +387,7 @@ const detectDocumentContour = async (imageUrl: string): Promise<{ angle: number;
  */
 export const detectTiltAngle = async (imageUrl: string): Promise<number> => {
   console.log('🔍 Auto-detecting document angle...');
+  console.log('📎 Image URL:', imageUrl ? imageUrl.substring(0, 50) + '...' : 'undefined or null');
 
   // Step 1: Try line detection (most reliable for documents with lines/tables)
   let lineResult = null;

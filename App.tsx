@@ -859,7 +859,13 @@ const App: React.FC = () => {
                                                 setStatus('success');
                                                 setStatusMessage(`✨ Auto-corrected ${analyzedCount} page(s)!`);
                                             } else if (mode === 'image' && currentImageFile) {
-                                                const detectedAngle = await detectTiltAngle(currentImageFile.url);
+                                                console.log('Current image file:', currentImageFile);
+
+                                                if (!currentImageFile.dataUrl) {
+                                                    throw new Error('Image URL is missing');
+                                                }
+
+                                                const detectedAngle = await detectTiltAngle(currentImageFile.dataUrl);
 
                                                 setImageFiles(prev => {
                                                     const updated = [...prev];
