@@ -2,21 +2,53 @@ import type { ExportFormat, TesseractPage } from '../types';
 import { createWorker, type Worker } from 'tesseract.js';
 
 /**
- * Wait for OpenCV to be ready
+ * Lazy load OpenCV.js only when needed
  */
-const waitForOpenCV = (): Promise<void> => {
-  return new Promise((resolve) => {
+const loadOpenCV = (): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    // Check if already loaded
     if (typeof cv !== 'undefined' && cv.Mat) {
       resolve();
-    } else {
+      return;
+    }
+
+    // Check if already loading
+    const existingScript = document.querySelector('script[src*="opencv.js"]');
+    if (existingScript) {
+      // Wait for it to load
       const checkInterval = setInterval(() => {
         if (typeof cv !== 'undefined' && cv.Mat) {
           clearInterval(checkInterval);
           resolve();
         }
       }, 100);
+      return;
     }
+
+    // Load OpenCV.js dynamically
+    const script = document.createElement('script');
+    script.src = 'https://docs.opencv.org/4.8.0/opencv.js';
+    script.async = true;
+    script.onload = () => {
+      console.log('OpenCV.js loaded (lazy)');
+      // Wait a bit for cv to be fully initialized
+      const checkInterval = setInterval(() => {
+        if (typeof cv !== 'undefined' && cv.Mat) {
+          clearInterval(checkInterval);
+          resolve();
+        }
+      }, 100);
+    };
+    script.onerror = () => reject(new Error('Failed to load OpenCV.js'));
+    document.head.appendChild(script);
   });
+};
+
+/**
+ * Wait for OpenCV to be ready (deprecated - use loadOpenCV instead)
+ */
+const waitForOpenCV = (): Promise<void> => {
+  return loadOpenCV();
 };
 
 /**
