@@ -127,10 +127,11 @@ const detectAngleFromLines = async (imageUrl: string): Promise<{ angle: number; 
         // Canny edge detection with more sensitive thresholds
         cv.Canny(gray, edges, 20, 80, 3, false);
 
-        // HoughLinesP parameters (more relaxed for better detection):
-        // rho=1, theta=Math.PI/180, threshold=30 (more lenient)
-        // minLineLength=30 (shorter lines ok), maxLineGap=15
-        cv.HoughLinesP(edges, lines, 1, Math.PI / 180, 30, 30, 15);
+        // HoughLinesP parameters (optimized for precision):
+        // rho=1 (1 pixel resolution)
+        // theta=Math.PI/360 (0.5 degree resolution - 2x more precise)
+        // threshold=30, minLineLength=30, maxLineGap=15
+        cv.HoughLinesP(edges, lines, 1, Math.PI / 360, 30, 30, 15);
 
         console.log(`🔍 Detected ${lines.rows} total lines from Hough Transform`);
 
