@@ -568,7 +568,7 @@ const App: React.FC = () => {
 
             <div className="w-full max-w-5xl mx-auto">
                 <header className="text-center mb-8">
-                    <h1 className="text-4xl sm:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-600">
+                    <h1 className="text-4xl sm:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600">
                         Document Angle Corrector
                     </h1>
                     <p className="text-slate-400 mt-2">
@@ -583,7 +583,7 @@ const App: React.FC = () => {
                             onClick={() => setMode('pdf')}
                             className={`px-6 py-2 rounded-md font-semibold transition-colors ${
                                 mode === 'pdf'
-                                    ? 'bg-brand-600 text-white'
+                                    ? 'bg-blue-600 text-white'
                                     : 'text-slate-400 hover:text-slate-200'
                             }`}
                         >
@@ -593,7 +593,7 @@ const App: React.FC = () => {
                             onClick={() => setMode('image')}
                             className={`px-6 py-2 rounded-md font-semibold transition-colors ${
                                 mode === 'image'
-                                    ? 'bg-brand-600 text-white'
+                                    ? 'bg-blue-600 text-white'
                                     : 'text-slate-400 hover:text-slate-200'
                             }`}
                         >
@@ -630,10 +630,10 @@ const App: React.FC = () => {
                 )}
 
                 <main className="space-y-6">
-                    <div className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 ${isDragging ? 'border-brand-500 bg-slate-800' : 'border-slate-700'}`}>
+                    <div className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 ${isDragging ? 'border-blue-500 bg-slate-800' : 'border-slate-700'}`}>
                         <div className="flex flex-col items-center justify-center">
                             <UploadIcon className="h-12 w-12 text-slate-500 mb-4" />
-                            <label htmlFor="file-upload" className="relative cursor-pointer bg-brand-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-brand-700 transition-colors">
+                            <label htmlFor="file-upload" className="relative cursor-pointer bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 transition-colors">
                                 <span>Select {mode === 'pdf' ? 'PDF' : 'Image'} Files</span>
                                 <input
                                     id="file-upload"
@@ -646,10 +646,15 @@ const App: React.FC = () => {
                                 />
                             </label>
                             <p className="mt-2 text-sm text-slate-400">or drag and drop</p>
+                            {mode === 'image' && (
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Supported: JPG, PNG, GIF, WebP, BMP, SVG
+                                </p>
+                            )}
                         </div>
                         {fileCount > 0 && (
                             <p className="mt-4 text-slate-300">
-                                <span className="font-semibold text-brand-400">{fileCount} {mode === 'pdf' ? 'PDF' : 'image'} file(s)</span> loaded
+                                <span className="font-semibold text-blue-400">{fileCount} {mode === 'pdf' ? 'PDF' : 'image'} file(s)</span> loaded
                             </p>
                         )}
                     </div>
@@ -672,7 +677,7 @@ const App: React.FC = () => {
                                         {fileCount > 1 && (
                                             <p className="text-sm text-slate-400">File {currentFileIndex + 1} of {fileCount}</p>
                                         )}
-                                        <p className="font-semibold text-brand-400 truncate">
+                                        <p className="font-semibold text-blue-400 truncate">
                                             {mode === 'pdf' && currentPdfFile ? currentPdfFile.file.name : ''}
                                             {mode === 'image' && currentImageFile ? currentImageFile.file.name : ''}
                                         </p>
@@ -887,7 +892,7 @@ const App: React.FC = () => {
                                             setTimeout(() => setStatus('idle'), 3000);
                                         }
                                     }}
-                                    className="w-full flex items-center justify-center gap-2 px-6 py-3 text-base font-semibold bg-gradient-to-r from-purple-600 to-brand-600 hover:from-purple-700 hover:to-brand-700 rounded-lg transition-all shadow-lg hover:shadow-xl"
+                                    className="w-full flex items-center justify-center gap-2 px-6 py-3 text-base font-semibold bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 rounded-lg transition-all shadow-lg hover:shadow-xl"
                                     disabled={status === 'analyzing'}
                                 >
                                     {status === 'analyzing' ? (
@@ -915,9 +920,9 @@ const App: React.FC = () => {
                                 <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-4 sm:space-y-0">
                                     <div className="flex-grow">
                                         <label htmlFor="rotation" className="block text-sm font-medium text-slate-300 mb-2">
-                                            Rotation Angle: <span className="font-bold text-brand-400">{sliderValue.toFixed(2)}°</span>
+                                            Rotation Angle: <span className="font-bold text-blue-400">{sliderValue.toFixed(2)}°</span>
                                             {mode === 'pdf' && pagesForSlider.length > 0 && (
-                                                <span className="text-xs text-brand-400 ml-2">({pagesForSlider.length} page{pagesForSlider.length > 1 ? 's' : ''} selected)</span>
+                                                <span className="text-xs text-blue-400 ml-2">({pagesForSlider.length} page{pagesForSlider.length > 1 ? 's' : ''} selected)</span>
                                             )}
                                             {mode === 'pdf' && pagesForSlider.length === 0 && (
                                                 <span className="text-xs text-slate-400 ml-2">(All pages)</span>
@@ -938,7 +943,7 @@ const App: React.FC = () => {
                                                     setSliderValue(newValue);
                                                     handleRotationChange(delta);
                                                 }}
-                                                className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-brand-500"
+                                                className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
                                             />
                                             <span className="text-xs text-slate-400">+15°</span>
                                         </div>
@@ -1011,7 +1016,7 @@ const App: React.FC = () => {
                                         <input
                                             type="number"
                                             placeholder="Custom angle"
-                                            className="px-3 py-1.5 text-sm bg-slate-700 text-slate-100 rounded-md border border-slate-600 focus:border-brand-500 focus:outline-none w-32"
+                                            className="px-3 py-1.5 text-sm bg-slate-700 text-slate-100 rounded-md border border-slate-600 focus:border-blue-500 focus:outline-none w-32"
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter') {
                                                     const value = parseFloat((e.target as HTMLInputElement).value);
@@ -1045,7 +1050,7 @@ const App: React.FC = () => {
                                         <button
                                             onClick={handleSavePdfs}
                                             disabled={status === 'generating'}
-                                            className="flex items-center justify-center w-full px-4 py-3 font-semibold text-white bg-brand-600 rounded-md hover:bg-brand-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="flex items-center justify-center w-full px-4 py-3 font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             <DownloadIcon className="h-5 w-5 mr-2" />
                                             Save All {fileCount} PDF{fileCount > 1 ? 's' : ''}
@@ -1055,7 +1060,7 @@ const App: React.FC = () => {
                                             <button
                                                 onClick={handleSaveImages}
                                                 disabled={status === 'generating'}
-                                                className="flex items-center justify-center w-full px-4 py-3 font-semibold text-white bg-brand-600 rounded-md hover:bg-brand-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                className="flex items-center justify-center w-full px-4 py-3 font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 <DownloadIcon className="h-5 w-5 mr-2" />
                                                 Save All {fileCount} Image{fileCount > 1 ? 's' : ''}
@@ -1081,7 +1086,7 @@ const App: React.FC = () => {
                                             type="checkbox"
                                             checked={showGuidelines}
                                             onChange={(e) => setShowGuidelines(e.target.checked)}
-                                            className="w-4 h-4 accent-brand-500"
+                                            className="w-4 h-4 accent-blue-500"
                                         />
                                         Show Guidelines
                                     </label>
@@ -1241,7 +1246,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({ pdfDoc, pageNumber, rot
             <div
                 className={`relative overflow-hidden ${
                     isSelected
-                        ? 'border-4 border-brand-500 shadow-brand-500/50 ring-4 ring-brand-400/30'
+                        ? 'border-4 border-blue-500 shadow-blue-500/50 ring-4 ring-blue-400/30'
                         : 'border-4 border-slate-600 shadow-black/40'
                 } shadow-lg`}
                 style={{
@@ -1258,7 +1263,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({ pdfDoc, pageNumber, rot
                 {isRendering && (
                     <div className="absolute inset-0 flex items-center justify-center bg-slate-900/90 z-30 rounded-lg">
                         <div className="flex flex-col items-center gap-2">
-                            <LoaderIcon className="h-8 w-8 animate-spin text-brand-500" />
+                            <LoaderIcon className="h-8 w-8 animate-spin text-blue-500" />
                             <span className="text-sm text-slate-400">Loading page {pageNumber}...</span>
                         </div>
                     </div>
@@ -1303,7 +1308,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({ pdfDoc, pageNumber, rot
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => onSelect(pageNumber)}
-                    className="absolute top-3 right-3 h-6 w-6 cursor-pointer accent-brand-500 z-10"
+                    className="absolute top-3 right-3 h-6 w-6 cursor-pointer accent-blue-500 z-10"
                 />
             </div>
             <div className="flex items-center gap-2 mt-2">
