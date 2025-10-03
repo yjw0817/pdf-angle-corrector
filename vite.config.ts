@@ -13,6 +13,13 @@ export default defineConfig(() => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
+      },
+      build: {
+        sourcemap: true,
+      },
+      // Enable source maps in development
+      css: {
+        devSourcemap: true,
       }
     };
 });

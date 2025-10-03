@@ -1,4 +1,4 @@
-import type { ExportFormat } from '../types';
+import type { ExportFormat, TesseractPage } from '../types';
 import { createWorker, type Worker } from 'tesseract.js';
 
 /**
@@ -29,7 +29,11 @@ const detectAngleFromTextBaselines = async (imageUrl: string): Promise<{ angle: 
     worker = await createWorker(['eng', 'kor'], 1);
     const { data } = await worker.recognize(imageUrl);
 
-    if (!data.lines || data.lines.length < 3) {
+    // Type assertion: Tesseract.js Page type doesn't have proper TypeScript definitions
+    // We need to cast to unknown first, then to our custom type
+    const page = data as unknown as TesseractPage;
+
+    if (!page.lines || page.lines.length < 3) {
       // Need at least 3 text lines for reliable detection
       return null;
     }
@@ -37,7 +41,7 @@ const detectAngleFromTextBaselines = async (imageUrl: string): Promise<{ angle: 
     const angles: number[] = [];
 
     // Calculate baseline angles from text lines
-    data.lines.forEach((line) => {
+    page.lines.forEach((line) => {
       if (!line.baseline || !line.bbox || !line.text) return;
 
       // Skip very short text (likely noise)
@@ -120,21 +124,28 @@ const detectAngleFromLines = async (imageUrl: string): Promise<{ angle: number; 
 
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
 
-        // Canny edge detection with lower thresholds for thin lines
-        cv.Canny(gray, edges, 30, 100, 3, false);
+        // Canny edge detection with more sensitive thresholds
+        cv.Canny(gray, edges, 20, 80, 3, false);
 
-        // HoughLinesP parameters (relaxed for receipts/forms):
-        // rho=1, theta=Math.PI/180, threshold=50 (less strict)
-        // minLineLength=50 (shorter lines ok), maxLineGap=10
-        cv.HoughLinesP(edges, lines, 1, Math.PI / 180, 50, 50, 10);
+        // HoughLinesP parameters (more relaxed for better detection):
+        // rho=1, theta=Math.PI/180, threshold=30 (more lenient)
+        // minLineLength=30 (shorter lines ok), maxLineGap=15
+        cv.HoughLinesP(edges, lines, 1, Math.PI / 180, 30, 30, 15);
+
+        console.log(`🔍 Detected ${lines.rows} total lines from Hough Transform`);
 
         const angles: number[] = [];
         const imgWidth = canvas.width;
         const imgHeight = canvas.height;
+        const minLineLength = imgWidth * 0.05; // Reduced from 0.1 to 0.05 (5% of width)
 
-        // Define margin to exclude border lines (5% from each edge)
-        const marginX = imgWidth * 0.05;
-        const marginY = imgHeight * 0.05;
+        // Define margin to exclude border lines (3% from each edge - reduced from 5%)
+        const marginX = imgWidth * 0.03;
+        const marginY = imgHeight * 0.03;
+
+        let filteredByBorder = 0;
+        let filteredByLength = 0;
+        let filteredByAngle = 0;
 
         for (let i = 0; i < lines.rows; i++) {
           const x1 = lines.data32S[i * 4];
@@ -147,14 +158,20 @@ const detectAngleFromLines = async (imageUrl: string): Promise<{ angle: number; 
             x1 < marginX || x2 < marginX || x1 > imgWidth - marginX || x2 > imgWidth - marginX ||
             y1 < marginY || y2 < marginY || y1 > imgHeight - marginY || y2 > imgHeight - marginY;
 
-          if (nearBorder) continue;
+          if (nearBorder) {
+            filteredByBorder++;
+            continue;
+          }
 
           const dx = x2 - x1;
           const dy = y2 - y1;
 
           // Skip very short lines (likely noise)
           const lineLength = Math.sqrt(dx * dx + dy * dy);
-          if (lineLength < imgWidth * 0.1) continue; // At least 10% of image width
+          if (lineLength < minLineLength) {
+            filteredByLength++;
+            continue;
+          }
 
           // Calculate angle in degrees
           let angle = (Math.atan2(dy, dx) * 180) / Math.PI;
@@ -166,8 +183,12 @@ const detectAngleFromLines = async (imageUrl: string): Promise<{ angle: number; 
           // Only use nearly horizontal lines (within ±15 degrees of horizontal)
           if (Math.abs(angle) <= 15) {
             angles.push(angle);
+          } else {
+            filteredByAngle++;
           }
         }
+
+        console.log(`📊 Line filtering: border=${filteredByBorder}, length=${filteredByLength}, angle=${filteredByAngle}, kept=${angles.length}`);
 
         src.delete();
         gray.delete();
@@ -175,7 +196,7 @@ const detectAngleFromLines = async (imageUrl: string): Promise<{ angle: number; 
         lines.delete();
 
         if (angles.length < 3) {
-          // Need at least 3 lines for detection
+          console.warn(`⚠️ Only ${angles.length} valid lines found (need at least 3)`);
           resolve(null);
           return;
         }
@@ -188,24 +209,30 @@ const detectAngleFromLines = async (imageUrl: string): Promise<{ angle: number; 
         const variance = angles.reduce((sum, angle) => sum + Math.pow(angle - mean, 2), 0) / angles.length;
         const stdDev = Math.sqrt(variance);
 
-        // Simple confidence based on consistency and sample size
-        let confidence = 0.9;
-        if (stdDev > 1.5) {
-          confidence = 0.6; // Low confidence if inconsistent
+        // Improved confidence calculation based on consistency and sample size
+        let confidence = 0.85;
+        if (stdDev > 2.0) {
+          confidence = 0.5; // Low confidence if very inconsistent
+        } else if (stdDev > 1.5) {
+          confidence = 0.65; // Medium-low confidence
         } else if (stdDev > 0.8) {
           confidence = 0.75; // Medium confidence
         }
 
         // Boost confidence with more lines
-        if (angles.length > 20) {
+        if (angles.length > 30) {
+          confidence = Math.min(0.95, confidence + 0.1);
+        } else if (angles.length > 15) {
           confidence = Math.min(0.95, confidence + 0.05);
         }
 
         // If angle is very small (< 0.5 degrees), it might be already straight
-        // Reduce confidence to allow fallback to text detection
+        // But don't reduce confidence too much - it's still a valid detection
         if (Math.abs(detectedAngle) < 0.5) {
-          confidence = Math.min(confidence, 0.65);
+          confidence = Math.min(confidence, 0.6);
         }
+
+        console.log(`✅ Line detection result: angle=${detectedAngle.toFixed(2)}°, confidence=${confidence.toFixed(2)}, stdDev=${stdDev.toFixed(2)}`);
 
         resolve({ angle: detectedAngle, confidence });
 
@@ -323,32 +350,44 @@ const detectDocumentContour = async (imageUrl: string): Promise<{ angle: number;
 export const detectTiltAngle = async (imageUrl: string): Promise<number> => {
   console.log('🔍 Auto-detecting document angle...');
 
-  // Step 1: Try line detection (most reliable)
+  // Step 1: Try line detection (most reliable for documents with lines/tables)
+  let lineResult = null;
   try {
-    const lineResult = await detectAngleFromLines(imageUrl);
-    if (lineResult !== null && lineResult.confidence >= 0.7) {
+    lineResult = await detectAngleFromLines(imageUrl);
+    if (lineResult !== null && lineResult.confidence >= 0.55) {
       console.log(`✅ Line detection: ${lineResult.angle.toFixed(2)}° (confidence: ${lineResult.confidence.toFixed(2)})`);
       return lineResult.angle;
     } else if (lineResult !== null) {
       console.log(`⚠️ Line detection low confidence: ${lineResult.confidence.toFixed(2)}, trying text detection...`);
+    } else {
+      console.log('⚠️ Line detection returned null, trying text detection...');
     }
   } catch (error) {
-    console.warn('Line detection failed:', error);
+    console.warn('❌ Line detection error:', error);
   }
 
   // Step 2: Fallback to text detection
+  let textResult = null;
   try {
-    const textResult = await detectAngleFromTextBaselines(imageUrl);
+    textResult = await detectAngleFromTextBaselines(imageUrl);
     if (textResult !== null) {
       console.log(`✅ Text detection (fallback): ${textResult.angle.toFixed(2)}° (confidence: ${textResult.confidence.toFixed(2)})`);
       return textResult.angle;
+    } else {
+      console.log('⚠️ Text detection returned null');
     }
   } catch (error) {
-    console.warn('Text detection failed:', error);
+    console.warn('❌ Text detection error:', error);
   }
 
-  // Step 3: Last resort - no detection succeeded
-  console.warn('❌ Auto-detection failed, returning 0°');
+  // Step 3: Use low-confidence line result if available
+  if (lineResult !== null && lineResult.confidence >= 0.3) {
+    console.log(`⚠️ Using low-confidence line result: ${lineResult.angle.toFixed(2)}° (confidence: ${lineResult.confidence.toFixed(2)})`);
+    return lineResult.angle;
+  }
+
+  // Step 4: Last resort - no detection succeeded
+  console.warn('❌ Auto-detection completely failed, returning 0°');
   return 0;
 };
 

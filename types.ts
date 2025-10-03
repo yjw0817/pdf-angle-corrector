@@ -73,5 +73,34 @@ export interface ImageFileData {
 
 export type AppMode = 'pdf' | 'image';
 
+// Tesseract.js type extensions
+export interface TesseractLine {
+  text: string;
+  baseline: {
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+    has_baseline: boolean;
+  };
+  bbox: {
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+  };
+  confidence: number;
+}
+
+export interface TesseractPage {
+  lines: TesseractLine[];
+  text: string;
+  confidence: number;
+  blocks: any[];
+  paragraphs: any[];
+  words: any[];
+  symbols: any[];
+}
+
 // This empty export ensures the file is treated as a module, which is required for 'declare global'.
 export {};

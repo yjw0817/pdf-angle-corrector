@@ -31,11 +31,30 @@ This is a web-based PDF and image angle correction tool built with React 19, Typ
 
 **Development:**
 - `npm install` - Install dependencies
-- `npm run dev` - Start Vite dev server
-- `npm run build` - Build for production
+- `npm run dev` - Start Vite dev server (runs on http://localhost:3000)
+- `npm run build` - Build for production (output to dist/)
 - `npm run preview` - Preview production build
 
+**Testing:**
+- No automated tests yet (Week 3 deliverable)
+- Manual testing workflow: Test with sample PDFs in project root
+
 ## Architecture
+
+### Project Structure
+
+**Root-level organization** (no src/ directory):
+- `App.tsx` - Main application component with state management
+- `index.tsx` - React entry point
+- `types.ts` - TypeScript type definitions and global declarations
+- `services/` - Business logic layer
+  - `pdfService.ts` - PDF manipulation using pdf-lib
+  - `imageService.ts` - Image processing and AI angle detection
+  - `geminiService.ts` - (Unused, deprecated AI service)
+- `components/` - Reusable UI components
+  - `Icons.tsx` - SVG icon components
+
+**Path Alias:** `@/*` resolves to project root (configured in vite.config.ts and tsconfig.json)
 
 ### State Management Architecture
 
@@ -123,6 +142,30 @@ All loaded via CDN or npm, typed via types.ts `declare global`
 - Works on both single images and multi-page PDFs
 - ⚠️ Known issue: Canvas reuse error on multi-page PDFs (see Critical Bug above)
 - Detection quality: Good for structured documents, needs improvement for noisy receipts
+
+### Common Development Issues
+
+**Canvas Reuse Error (CRITICAL BUG):**
+- **Symptom:** `Error: Cannot use the same canvas during multiple render() operations`
+- **Location:** App.tsx:705-737 (Auto-Fix button handler for multi-page PDFs)
+- **Cause:** PDF.js render tasks not properly cancelled/isolated between pages
+- **Attempted Fix:** Canvas cleanup (did NOT work)
+- **Next Approach:** Investigate render task cancellation and canvas cloning
+
+**OpenCV.js Loading:**
+- OpenCV.js loads asynchronously from CDN
+- Use `waitForOpenCV()` helper before calling cv functions
+- Type safety: `cv` declared as `any` in types.ts (no official TypeScript types available)
+
+**Tesseract.js Worker Management:**
+- Workers must be properly terminated to avoid memory leaks
+- Always use try-finally blocks with `worker.terminate()`
+- Language loading can take 2-3 seconds on first use
+
+**File System Access API:**
+- Only works in Chrome/Edge (not Firefox/Safari)
+- Falls back to traditional download for unsupported browsers
+- Requires user gesture (button click) to trigger
 
 ---
 

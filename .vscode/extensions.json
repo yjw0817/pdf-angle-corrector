@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "ms-vscode.vscode-typescript-next",
+    "msjsdiag.vscode-react-native",
+    "dsznajder.es7-react-js-snippets",
+    "firefox-devtools.vscode-firefox-debug",
+    "formulahendry.auto-rename-tag",
+    "bradlc.vscode-tailwindcss"
+  ]
+}
