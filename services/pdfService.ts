@@ -1,4 +1,62 @@
 /**
+ * Lazy load pdf-lib only when needed
+ */
+const loadPdfLib = (): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    // Check if already loaded
+    if (typeof PDFLib !== 'undefined') {
+      resolve();
+      return;
+    }
+
+    // Check if already loading
+    const existingScript = document.querySelector('script[src*="pdf-lib"]');
+    if (existingScript) {
+      // Wait for it to load with timeout
+      let attempts = 0;
+      const maxAttempts = 100; // 10 seconds max
+      const checkInterval = setInterval(() => {
+        attempts++;
+        if (typeof PDFLib !== 'undefined') {
+          clearInterval(checkInterval);
+          resolve();
+        } else if (attempts >= maxAttempts) {
+          clearInterval(checkInterval);
+          reject(new Error('pdf-lib loading timeout (already loading)'));
+        }
+      }, 100);
+      return;
+    }
+
+    // Load pdf-lib dynamically
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js';
+    script.async = true;
+
+    let attempts = 0;
+    const maxAttempts = 100; // 10 seconds max
+
+    script.onload = () => {
+      console.log('pdf-lib loaded (lazy)');
+      // Wait for PDFLib to be fully initialized
+      const checkInterval = setInterval(() => {
+        attempts++;
+        if (typeof PDFLib !== 'undefined') {
+          clearInterval(checkInterval);
+          resolve();
+        } else if (attempts >= maxAttempts) {
+          clearInterval(checkInterval);
+          reject(new Error('pdf-lib initialization timeout'));
+        }
+      }, 100);
+    };
+
+    script.onerror = () => reject(new Error('Failed to load pdf-lib'));
+    document.head.appendChild(script);
+  });
+};
+
+/**
  * Creates a new PDF with all pages rotated by a specified angle.
  * This function works by creating a new document and drawing the rotated pages
  * from the original document onto it. This is a robust method for applying
@@ -15,6 +73,9 @@ export const createRotatedPdf = async (
     flips: Record<number, { horizontal: boolean; vertical: boolean }> = {}
 ): Promise<Uint8Array> => {
     try {
+        // Lazy load pdf-lib if not already loaded
+        await loadPdfLib();
+
         const { PDFDocument, degrees } = PDFLib;
 
         // Load the original PDF document

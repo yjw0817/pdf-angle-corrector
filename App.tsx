@@ -9,6 +9,68 @@ type Status = 'idle' | 'loading' | 'analyzing' | 'generating' | 'success' | 'err
 // Global PDF render queue to prevent concurrent render operations
 let pdfRenderQueue = Promise.resolve();
 
+/**
+ * Lazy load PDF.js only when needed
+ */
+const loadPdfJs = (): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    // Check if already loaded
+    if (typeof pdfjsLib !== 'undefined') {
+      resolve();
+      return;
+    }
+
+    // Check if already loading
+    const existingScript = document.querySelector('script[src*="pdf.min.js"]');
+    if (existingScript) {
+      // Wait for it to load with timeout
+      let attempts = 0;
+      const maxAttempts = 100; // 10 seconds max
+      const checkInterval = setInterval(() => {
+        attempts++;
+        if (typeof pdfjsLib !== 'undefined') {
+          clearInterval(checkInterval);
+          // Set worker source
+          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+          resolve();
+        } else if (attempts >= maxAttempts) {
+          clearInterval(checkInterval);
+          reject(new Error('PDF.js loading timeout (already loading)'));
+        }
+      }, 100);
+      return;
+    }
+
+    // Load PDF.js dynamically
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    script.async = true;
+
+    let attempts = 0;
+    const maxAttempts = 100; // 10 seconds max
+
+    script.onload = () => {
+      console.log('PDF.js loaded (lazy)');
+      // Wait for pdfjsLib to be fully initialized
+      const checkInterval = setInterval(() => {
+        attempts++;
+        if (typeof pdfjsLib !== 'undefined') {
+          clearInterval(checkInterval);
+          // Set worker source
+          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+          resolve();
+        } else if (attempts >= maxAttempts) {
+          clearInterval(checkInterval);
+          reject(new Error('PDF.js initialization timeout'));
+        }
+      }, 100);
+    };
+
+    script.onerror = () => reject(new Error('Failed to load PDF.js'));
+    document.head.appendChild(script);
+  });
+};
+
 const StatusIndicator: React.FC<{ status: Status; message: string }> = ({ status, message }) => {
     if (status === 'idle') return null;
 
@@ -74,6 +136,9 @@ const App: React.FC = () => {
             setStatusMessage(`Loading ${files.length} PDF file(s)...`);
 
             try {
+                // Lazy load PDF.js if not already loaded
+                await loadPdfJs();
+
                 const loadedFiles: PdfFileData[] = [];
                 for (const file of files) {
                     const arrayBuffer = await file.arrayBuffer();

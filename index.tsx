@@ -4,10 +4,8 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './styles.css';
 
-// Set up the PDF.js worker
-if (typeof pdfjsLib !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
-}
+// PDF.js lazy loading is now handled in App.tsx when a PDF is uploaded
+// No need to load it immediately on page load
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
