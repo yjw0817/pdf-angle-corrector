@@ -1,11 +1,4 @@
-# robots.txt for PDF Angle Corrector
-# https://pdf-angle-corrector.com
-
 User-agent: *
 Allow: /
 
-# Sitemap
-Sitemap: https://pdf-angle-corrector.com/sitemap.xml
-
-# Crawl-delay for politeness (optional)
-Crawl-delay: 1
+Sitemap: https://pdf-angle-corrector.vercel.app/sitemap.xml
