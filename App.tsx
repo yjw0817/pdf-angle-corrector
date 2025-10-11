@@ -350,6 +350,108 @@ const App: React.FC = () => {
         }
     };
 
+    const handleSavePdfsAsImages = async (format: 'png' | 'jpg') => {
+        if (pdfFiles.length === 0) return;
+        if (!('showSaveFilePicker' in window)) {
+            setStatus('error');
+            setStatusMessage('Your browser does not support automatic file saving. Please use Chrome or Edge.');
+            setTimeout(() => setStatus('idle'), 3000);
+            return;
+        }
+
+        setStatus('generating');
+        setStatusMessage(`Converting PDFs to ${format.toUpperCase()}...`);
+
+        try {
+            let totalPagesSaved = 0;
+
+            for (let fileIdx = 0; fileIdx < pdfFiles.length; fileIdx++) {
+                const pdfFile = pdfFiles[fileIdx];
+                const totalPages = pdfFile.pdfDoc.numPages;
+                const baseFileName = pdfFile.file.name.replace(/\.pdf$/i, '');
+
+                for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+                    try {
+                        // Render page to canvas
+                        const page = await pdfFile.pdfDoc.getPage(pageNum);
+                        const viewport = page.getViewport({ scale: 2.0 }); // Higher scale for better quality
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        if (!ctx) continue;
+
+                        canvas.width = viewport.width;
+                        canvas.height = viewport.height;
+
+                        // Join render queue
+                        const renderTask = pdfRenderQueue.then(async () => {
+                            await page.render({ canvasContext: ctx, viewport }).promise;
+                        });
+                        pdfRenderQueue = renderTask;
+                        await renderTask;
+
+                        // Get image URL
+                        const imageUrl = canvas.toDataURL('image/png');
+
+                        // Apply rotation, offset, and flip
+                        const rotation = pdfFile.rotations[pageNum] || 0;
+                        const offset = pdfFile.offsets[pageNum] || { x: 0, y: 0 };
+                        const flip = pdfFile.flips[pageNum] || { horizontal: false, vertical: false };
+
+                        const blob = await rotateAndExportImage(
+                            imageUrl,
+                            rotation,
+                            offset,
+                            format,
+                            flip.horizontal,
+                            flip.vertical
+                        );
+
+                        // Generate filename: basename_pageN.ext (for multi-page) or basename.ext (for single page)
+                        const ext = format === 'jpg' ? 'jpg' : 'png';
+                        const suggestedName = totalPages > 1
+                            ? `${baseFileName}_page${pageNum}.${ext}`
+                            : `${baseFileName}.${ext}`;
+
+                        const mimeType = format === 'jpg' ? 'image/jpeg' : 'image/png';
+                        const description = format === 'jpg' ? 'JPEG Image' : 'PNG Image';
+
+                        const handle = await (window as any).showSaveFilePicker({
+                            suggestedName,
+                            types: [{
+                                description,
+                                accept: { [mimeType]: [`.${ext}`] }
+                            }]
+                        });
+                        const writable = await handle.createWritable();
+                        await writable.write(blob);
+                        await writable.close();
+
+                        totalPagesSaved++;
+                        setStatusMessage(`Saved ${totalPagesSaved} image(s)...`);
+
+                    } catch (err: any) {
+                        if (err.name === 'AbortError') {
+                            setStatus('idle');
+                            setStatusMessage(`Cancelled. Saved ${totalPagesSaved} image(s).`);
+                            setTimeout(() => setStatus('idle'), 2000);
+                            return;
+                        }
+                        throw err;
+                    }
+                }
+            }
+
+            setStatus('success');
+            setStatusMessage(`All ${totalPagesSaved} images saved!`);
+        } catch (error) {
+            console.error("Error saving PDFs as images:", error);
+            setStatus('error');
+            setStatusMessage('Failed to save images.');
+        } finally {
+            setTimeout(() => setStatus('idle'), 2000);
+        }
+    };
+
     const handleExportImagesToPdf = async () => {
         if (imageFiles.length === 0) return;
 
@@ -761,14 +863,34 @@ const App: React.FC = () => {
                                 {/* Save Buttons - Inside document name panel */}
                                 <div className="mt-4 grid grid-cols-1 gap-3">
                                     {mode === 'pdf' ? (
-                                        <button
-                                            onClick={handleSavePdfs}
-                                            disabled={status === 'generating'}
-                                            className="flex items-center justify-center w-full px-4 py-3 font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            <DownloadIcon className="h-5 w-5 mr-2" />
-                                            Save All {fileCount} PDF{fileCount > 1 ? 's' : ''}
-                                        </button>
+                                        <>
+                                            <button
+                                                onClick={handleSavePdfs}
+                                                disabled={status === 'generating'}
+                                                className="flex items-center justify-center w-full px-4 py-3 font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                <DownloadIcon className="h-5 w-5 mr-2" />
+                                                Save All {fileCount} PDF{fileCount > 1 ? 's' : ''}
+                                            </button>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button
+                                                    onClick={() => handleSavePdfsAsImages('png')}
+                                                    disabled={status === 'generating'}
+                                                    className="flex items-center justify-center px-3 py-2 text-sm font-semibold text-white bg-slate-700 rounded-md hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    <DownloadIcon className="h-4 w-4 mr-1" />
+                                                    PNG
+                                                </button>
+                                                <button
+                                                    onClick={() => handleSavePdfsAsImages('jpg')}
+                                                    disabled={status === 'generating'}
+                                                    className="flex items-center justify-center px-3 py-2 text-sm font-semibold text-white bg-slate-700 rounded-md hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    <DownloadIcon className="h-4 w-4 mr-1" />
+                                                    JPG
+                                                </button>
+                                            </div>
+                                        </>
                                     ) : (
                                         <>
                                             <button
@@ -1197,6 +1319,27 @@ const App: React.FC = () => {
                         </>
                     )}
                 </main>
+
+                {/* Footer with Buy Me a Coffee */}
+                <footer className="mt-12 pb-8 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                        <p className="text-slate-400 text-sm">
+                            100% Privacy-First • No Upload • Client-Side Processing
+                        </p>
+                        <a
+                            href="https://buymeacoffee.com/yjw0817"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-semibold rounded-lg transition-colors shadow-lg hover:shadow-xl"
+                        >
+                            <span className="text-lg">☕</span>
+                            <span>Buy me a coffee</span>
+                        </a>
+                        <p className="text-slate-500 text-xs mt-1">
+                            Support the development of this free tool
+                        </p>
+                    </div>
+                </footer>
             </div>
         </div>
     );
